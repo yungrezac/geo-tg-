@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Гео-трекер</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f9f9f9;
-      padding: 20px;
       margin: 0;
+      padding: 20px;
+      background: #f9f9f9;
       color: #333;
     }
     .container {
@@ -21,33 +21,32 @@
       color: #0088cc;
       text-align: center;
     }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      background: #0088cc;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
     .status {
       padding: 15px;
       border-radius: 10px;
       margin: 20px 0;
       background: #f0f0f0;
     }
-    button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background-color: #0088cc;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin: 10px 0;
-    }
     .coordinates {
-      margin-top: 20px;
       padding: 15px;
       background: #e8f5e9;
       border-radius: 10px;
       display: none;
     }
     .error {
-      color: #d32f2f;
       background: #ffebee;
+      color: #d32f2f;
     }
   </style>
 </head>
@@ -56,10 +55,10 @@
     <h1>Гео-трекер</h1>
     
     <div class="status" id="status">
-      Нажмите кнопку ниже для получения ваших координат
+      Нажмите кнопку для получения координат
     </div>
     
-    <button id="getLocationBtn">Получить мои координаты</button>
+    <button id="getLocationBtn">📍 Получить координаты</button>
     
     <div class="coordinates" id="coordinates">
       <h3>Ваше местоположение:</h3>
@@ -78,29 +77,14 @@
     const coordinatesElement = document.getElementById('coordinates');
     const getLocationBtn = document.getElementById('getLocationBtn');
     
-    // Функция для отправки данных на сервер
-    function sendToServer(location) {
-      fetch('https://lively-malabi-81b16c.netlify.app/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user: Telegram.WebApp.initDataUnsafe.user,
-          location: location
-        }),
-      })
-      .then(response => {
-        console.log('Данные успешно отправлены', response);
-      })
-      .catch(error => {
-        console.error('Ошибка при отправке данных:', error);
-      });
+    // Функция для отправки данных в бот
+    function sendDataToBot(data) {
+      Telegram.WebApp.sendData(JSON.stringify(data));
     }
     
     // Обработчик кнопки
     getLocationBtn.addEventListener('click', () => {
-      statusElement.textContent = "Запрашиваем ваше местоположение...";
+      statusElement.textContent = "Определяем ваше местоположение...";
       statusElement.style.background = "#fff3e0";
       
       Telegram.WebApp.requestGeoLocation((location) => {
@@ -114,10 +98,17 @@
           statusElement.textContent = "Местоположение получено!";
           statusElement.style.background = "#e8f5e9";
           
-          // Отправляем данные на сервер
-          sendToServer(location);
+          // Отправляем данные в бот
+          sendDataToBot({
+            action: "location_update",
+            coordinates: {
+              lat: location.latitude,
+              lon: location.longitude
+            },
+            timestamp: new Date().toISOString()
+          });
         } else {
-          statusElement.textContent = "Доступ к геолокации не предоставлен. Пожалуйста, включите доступ в настройках бота.";
+          statusElement.textContent = "Доступ к геолокации не предоставлен. Включите 'Allow Access to Geolocation' в профиле бота.";
           statusElement.style.background = "#ffebee";
         }
       });
