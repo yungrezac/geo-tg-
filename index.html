@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Гео-трекер</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+      margin: 0;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #0088cc;
+      text-align: center;
+    }
+    .status {
+      padding: 15px;
+      border-radius: 10px;
+      margin: 20px 0;
+      background: #f0f0f0;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background-color: #0088cc;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin: 10px 0;
+    }
+    .coordinates {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e8f5e9;
+      border-radius: 10px;
+      display: none;
+    }
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Гео-трекер</h1>
+    
+    <div class="status" id="status">
+      Нажмите кнопку ниже для получения ваших координат
+    </div>
+    
+    <button id="getLocationBtn">Получить мои координаты</button>
+    
+    <div class="coordinates" id="coordinates">
+      <h3>Ваше местоположение:</h3>
+      <p>Широта: <span id="latitude"></span></p>
+      <p>Долгота: <span id="longitude"></span></p>
+      <p>Точность: <span id="accuracy"></span> метров</p>
+    </div>
+  </div>
+
+  <script>
+    // Инициализация WebApp Telegram
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    
+    const statusElement = document.getElementById('status');
+    const coordinatesElement = document.getElementById('coordinates');
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    
+    // Функция для отправки данных на сервер
+    function sendToServer(location) {
+      fetch('https://lively-malabi-81b16c.netlify.app/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user: Telegram.WebApp.initDataUnsafe.user,
+          location: location
+        }),
+      })
+      .then(response => {
+        console.log('Данные успешно отправлены', response);
+      })
+      .catch(error => {
+        console.error('Ошибка при отправке данных:', error);
+      });
+    }
+    
+    // Обработчик кнопки
+    getLocationBtn.addEventListener('click', () => {
+      statusElement.textContent = "Запрашиваем ваше местоположение...";
+      statusElement.style.background = "#fff3e0";
+      
+      Telegram.WebApp.requestGeoLocation((location) => {
+        if (location) {
+          // Показываем координаты
+          document.getElementById('latitude').textContent = location.latitude;
+          document.getElementById('longitude').textContent = location.longitude;
+          document.getElementById('accuracy').textContent = location.accuracy || "неизвестно";
+          
+          coordinatesElement.style.display = 'block';
+          statusElement.textContent = "Местоположение получено!";
+          statusElement.style.background = "#e8f5e9";
+          
+          // Отправляем данные на сервер
+          sendToServer(location);
+        } else {
+          statusElement.textContent = "Доступ к геолокации не предоставлен. Пожалуйста, включите доступ в настройках бота.";
+          statusElement.style.background = "#ffebee";
+        }
+      });
+    });
+  </script>
+</body>
+</html>
