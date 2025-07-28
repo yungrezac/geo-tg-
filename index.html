@@ -1,118 +1,784 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Гео-трекер</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f9f9f9;
-      color: #333;
-    }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    h1 {
-      color: #0088cc;
-      text-align: center;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      background: #0088cc;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .status {
-      padding: 15px;
-      border-radius: 10px;
-      margin: 20px 0;
-      background: #f0f0f0;
-    }
-    .coordinates {
-      padding: 15px;
-      background: #e8f5e9;
-      border-radius: 10px;
-      display: none;
-    }
-    .error {
-      background: #ffebee;
-      color: #d32f2f;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guid - Short Video App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            background-color: #000;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #app-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.3s ease;
+        }
+        
+        .page {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+        }
+        
+        .page.active {
+            display: block;
+        }
+        
+        /* Home Page */
+        #home-page {
+            position: relative;
+        }
+        
+        #video-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .video-wrapper {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        
+        .video-player {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: #111;
+        }
+        
+        .video-info {
+            position: absolute;
+            bottom: 100px;
+            left: 15px;
+            z-index: 10;
+            max-width: 70%;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .username {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .description {
+            font-size: 14px;
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        
+        .hashtags {
+            font-size: 14px;
+            color: #1c9eff;
+        }
+        
+        .right-sidebar {
+            position: absolute;
+            right: 15px;
+            bottom: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+            gap: 20px;
+        }
+        
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            background-color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            position: relative;
+        }
+        
+        .follow-button {
+            position: absolute;
+            bottom: -5px;
+            width: 20px;
+            height: 20px;
+            background-color: #f00;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            border: 2px solid #000;
+        }
+        
+        .action-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+            font-size: 24px;
+            backdrop-filter: blur(5px);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .action-icon:active {
+            transform: scale(0.9);
+        }
+        
+        .action-count {
+            font-size: 12px;
+        }
+        
+        .music-info {
+            display: flex;
+            align-items: center;
+            position: absolute;
+            bottom: 70px;
+            left: 15px;
+            z-index: 10;
+        }
+        
+        .music-icon {
+            margin-right: 8px;
+            animation: rotate 4s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #000;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+            border-top: 1px solid #222;
+        }
+        
+        .nav-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            font-size: 10px;
+            padding: 8px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .nav-button.active {
+            opacity: 1;
+        }
+        
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 3px;
+        }
+        
+        .create-button {
+            width: 42px;
+            height: 28px;
+            background: linear-gradient(135deg, #FE3C72, #FF655B);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        /* Discover Page */
+        #discover-page {
+            padding: 15px;
+            overflow-y: auto;
+            padding-bottom: 70px;
+        }
+        
+        .search-bar {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        
+        .search-input {
+            flex: 1;
+            background-color: #222;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 15px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        .search-button {
+            background-color: #333;
+            border: none;
+            border-radius: 8px;
+            padding: 0 15px;
+            margin-left: 8px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .categories {
+            display: flex;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            padding-bottom: 5px;
+            gap: 8px;
+        }
+        
+        .category {
+            background-color: #222;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        
+        .category.active {
+            background-color: #1c9eff;
+        }
+        
+        .trending-hashtags {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .hashtag-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .hashtag-item {
+            background-color: #222;
+            border-radius: 8px;
+            padding: 12px;
+        }
+        
+        .hashtag-name {
+            font-weight: bold;
+            color: #1c9eff;
+            margin-bottom: 5px;
+        }
+        
+        .hashtag-count {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .trending-creators {
+            margin-bottom: 20px;
+        }
+        
+        .creator-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        
+        .creator-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .creator-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .creator-name {
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        /* Create Page */
+        #create-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .create-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+        
+        .create-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .create-option {
+            background-color: #222;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .create-option:active {
+            transform: scale(0.95);
+        }
+        
+        .create-option-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        
+        .create-option-text {
+            font-size: 14px;
+        }
+        
+        /* Inbox Page */
+        #inbox-page {
+            padding: 15px;
+            overflow-y: auto;
+            padding-bottom: 70px;
+        }
+        
+        .inbox-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .inbox-tab {
+            padding: 10px 15px;
+            font-size: 14px;
+            opacity: 0.7;
+            position: relative;
+        }
+        
+        .inbox-tab.active {
+            opacity: 1;
+            font-weight: bold;
+        }
+        
+        .inbox-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #1c9eff;
+        }
+        
+        .message-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .message-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-radius: 10px;
+            background-color: #222;
+        }
+        
+        .message-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #333;
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .message-content {
+            flex: 1;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .message-sender {
+            font-weight: bold;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .message-text {
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        /* Profile Page */
+        #profile-page {
+            padding: 15px;
+            overflow-y: auto;
+            padding-bottom: 70px;
+        }
+        
+        .profile-header {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: #333;
+            margin-right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: bold;
+        }
+        
+        .profile-stats {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .profile-name {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        .profile-username {
+            color: #999;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .profile-bio {
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .stat-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stat-count {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .profile-button {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .edit-button {
+            background-color: #333;
+        }
+        
+        .settings-button {
+            background-color: #333;
+            width: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .profile-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .profile-tab {
+            padding: 10px 15px;
+            font-size: 14px;
+            opacity: 0.7;
+            position: relative;
+        }
+        
+        .profile-tab.active {
+            opacity: 1;
+            font-weight: bold;
+        }
+        
+        .profile-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #1c9eff;
+        }
+        
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+        }
+        
+        .video-thumbnail {
+            aspect-ratio: 9/16;
+            background-color: #222;
+            position: relative;
+        }
+        
+        .video-thumbnail::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 50%);
+        }
+        
+        .video-stats {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+            z-index: 2;
+        }
+        
+        .video-stats span {
+            margin-right: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Loading */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: #1c9eff;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Swipe Hint */
+        .swipe-hint {
+            position: absolute;
+            bottom: 150px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            z-index: 5;
+            animation: pulse 2s infinite;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .swipe-hint-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Гео-трекер</h1>
-    
-    <div class="status" id="status">
-      Нажмите кнопку для получения координат
-    </div>
-    
-    <button id="getLocationBtn">📍 Получить координаты</button>
-    
-    <div class="coordinates" id="coordinates">
-      <h3>Ваше местоположение:</h3>
-      <p>Широта: <span id="latitude"></span></p>
-      <p>Долгота: <span id="longitude"></span></p>
-      <p>Точность: <span id="accuracy"></span> метров</p>
-    </div>
-  </div>
-
-  <script>
-    // Инициализация WebApp Telegram
-    Telegram.WebApp.ready();
-    Telegram.WebApp.expand();
-    
-    const statusElement = document.getElementById('status');
-    const coordinatesElement = document.getElementById('coordinates');
-    const getLocationBtn = document.getElementById('getLocationBtn');
-    
-    // Функция для отправки данных в бот
-    function sendDataToBot(data) {
-      Telegram.WebApp.sendData(JSON.stringify(data));
-    }
-    
-    // Обработчик кнопки
-    getLocationBtn.addEventListener('click', () => {
-      statusElement.textContent = "Определяем ваше местоположение...";
-      statusElement.style.background = "#fff3e0";
-      
-      Telegram.WebApp.requestGeoLocation((location) => {
-        if (location) {
-          // Показываем координаты
-          document.getElementById('latitude').textContent = location.latitude;
-          document.getElementById('longitude').textContent = location.longitude;
-          document.getElementById('accuracy').textContent = location.accuracy || "неизвестно";
-          
-          coordinatesElement.style.display = 'block';
-          statusElement.textContent = "Местоположение получено!";
-          statusElement.style.background = "#e8f5e9";
-          
-          // Отправляем данные в бот
-          sendDataToBot({
-            action: "location_update",
-            coordinates: {
-              lat: location.latitude,
-              lon: location.longitude
-            },
-            timestamp: new Date().toISOString()
-          });
-        } else {
-          statusElement.textContent = "Доступ к геолокации не предоставлен. Включите 'Allow Access to Geolocation' в профиле бота.";
-          statusElement.style.background = "#ffebee";
-        }
-      });
-    });
-  </script>
-</body>
-</html>
+    <div id="app-container">
+        <!-- Home Page -->
+        <div id="home-page" class="page active">
+            <div id="video-container">
+                <!-- Videos will be inserted here dynamically -->
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading videos...</div>
+                </div>
+            </div>
+            
+            <div class="swipe-hint">
+                <div class="swipe-hint-icon">👆</div>
+                <div>Swipe up for next video</div>
+            </div>
+        </div>
+        
+        <!-- Discover Page -->
+        <div id="discover-page" class="page">
+            <div class="search-bar">
+                <input type="text" class="search-input" placeholder="Search videos, users, hashtags...">
+                <button class="search-button">🔍</button>
+            </div>
+            
+            <div class="categories">
+                <div class="category active">For You</div>
+                <div class="category">Trending</div>
+                <div class="category">Music</div>
+                <div class="category">Gaming</div>
+                <div class="category">Sports</div>
+                <div class="category">Comedy</div>
+                <div class="category">Food</div>
+                <div class="category">Animals</div>
+            </div>
+            
+            <div class="trending-hashtags">
+                <div class="section-title">Trending Hashtags</div>
+                <div class="hashtag-list">
+                    <div class="hashtag-item">
+                        <div class="hashtag-name">#travel</div>
+                        <div class="hashtag-count">12.4M views</div>
+                    </div>
+                    <div class="hashtag-item">
+                        <div class="hashtag-name">#dance</div>
+                        <div class="hashtag-count">8.7M views</div>
+                    </div>
+                    <div class="hashtag-item">
+                        <div class="hashtag-name">#fitness</div>
+                        <div class="hashtag-count">7.2M views</div>
+                    </div>
+                 
