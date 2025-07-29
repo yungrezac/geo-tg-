@@ -33,7 +33,6 @@
         .video-wrapper.prev { display: block; z-index: 1; transform: translateY(-100%); }
         .video-player { width: 100%; height: 100%; object-fit: cover; background-color: #000; }
         .video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%); pointer-events: none; }
-        /* ИЗМЕНЕНО: Позиция блока с информацией и боковой панели скорректирована */
         .video-info { position: absolute; bottom: 70px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
         .username { font-weight: bold; font-size: 16px; margin-bottom: 5px; cursor: pointer; }
         .description { font-size: 14px; margin-bottom: 10px; line-height: 1.4; }
@@ -41,12 +40,24 @@
         .avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #fff; margin-bottom: 25px; background-color: var(--tg-secondary-bg); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; position: relative; }
         .follow-button { position: absolute; bottom: -10px; background-color: var(--accent-red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid #000; cursor: pointer; }
         .action-button { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; cursor: pointer; }
-        /* ИЗМЕНЕНО: Убран нижний отступ у последней кнопки */
         .action-button:last-child { margin-bottom: 0; }
         .action-icon { font-size: 30px; margin-bottom: 5px; transition: transform 0.2s ease; }
         .action-icon.liked { color: var(--accent-red); }
         .action-button:active .action-icon { transform: scale(0.9); }
         .action-count { font-size: 13px; font-weight: 500; }
+        
+        /* ДОБАВЛЕНО: Стили для кнопки звука */
+        .mute-button {
+            position: absolute;
+            top: 66px;
+            right: 15px;
+            z-index: 11;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
         .header { padding: 15px; font-size: 20px; font-weight: bold; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 10; border-bottom: 1px solid var(--tg-secondary-bg); }
         .search-bar { display: flex; padding: 15px; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 11; }
         .search-input { flex: 1; padding: 12px 15px; border-radius: var(--border-radius); border: none; background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
@@ -214,8 +225,6 @@
             }
 
             async function fetchVideos() {
-                // ИСПРАВЛЕНО: Явно указана связь `videos.user_id -> profiles.id`
-                // Это устраняет ошибку "more than one relationship was found".
                 const { data, error } = await supabase
                     .from('videos')
                     .select(`
@@ -272,8 +281,10 @@
                 videoWrapper.className = `video-wrapper ${classNames}`;
                 videoWrapper.dataset.videoId = videoData.id;
 
+                // ДОБАВЛЕНО: Кнопка звука в HTML
                 videoWrapper.innerHTML = `
                     <video class="video-player" src="${videoData.url}" loop playsinline></video>
+                    <div class="mute-button"><i class="fas fa-volume-high"></i></div>
                     <div class="video-overlay"></div>
                     <div class="loading-indicator"><div class="spinner"></div></div>
                     <div class="video-info">
@@ -295,6 +306,16 @@
                         </div>
                     </div>`;
                 
+                const videoPlayer = videoWrapper.querySelector('.video-player');
+                const muteButton = videoWrapper.querySelector('.mute-button');
+
+                // ДОБАВЛЕНО: Обработчик клика для кнопки звука
+                muteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    videoPlayer.muted = !videoPlayer.muted;
+                    muteButton.querySelector('i').className = videoPlayer.muted ? 'fas fa-volume-mute' : 'fas fa-volume-high';
+                });
+
                 videoWrapper.querySelector('.like-btn').addEventListener('click', (e) => { e.stopPropagation(); handleLike(videoWrapper, videoData); });
                 videoWrapper.querySelector('.save-btn').addEventListener('click', (e) => { e.stopPropagation(); handleSave(videoWrapper, videoData); });
                 videoWrapper.querySelector('.comment-btn').addEventListener('click', (e) => { e.stopPropagation(); openComments(videoData.id); });
@@ -303,19 +324,18 @@
 
                 let clickTimer = null;
                 videoWrapper.addEventListener('click', (e) => {
-                    if (e.target !== videoWrapper && e.target.closest('.video-info, .right-sidebar')) {
+                    if (e.target.closest('.video-info, .right-sidebar, .mute-button')) {
                         return;
                     }
                     
                     if (clickTimer === null) {
                         clickTimer = setTimeout(() => {
                             clickTimer = null;
-                            const video = videoWrapper.querySelector('.video-player');
-                            if (video) {
-                                if (video.paused) {
-                                    video.play();
+                            if (videoPlayer) {
+                                if (videoPlayer.paused) {
+                                    videoPlayer.play();
                                 } else {
-                                    video.pause();
+                                    videoPlayer.pause();
                                 }
                             }
                         }, 300);
@@ -344,12 +364,10 @@
                 playCurrentVideo();
             }
 
-            // ИЗМЕНЕНО: Улучшена логика воспроизведения видео со звуком
+            // ИЗМЕНЕНО: Обновлена логика для сброса состояния звука при смене видео
             function playCurrentVideo() {
-                // Сначала приостанавливаем и отключаем звук для всех видео
                 document.querySelectorAll('.video-player').forEach(v => {
                     v.pause();
-                    v.muted = true;
                 });
 
                 const activeVideoWrapper = document.querySelector('.video-wrapper.active');
@@ -357,21 +375,23 @@
 
                 const activeVideo = activeVideoWrapper.querySelector('.video-player');
                 const loadingIndicator = activeVideoWrapper.querySelector('.loading-indicator');
+                const muteButtonIcon = activeVideoWrapper.querySelector('.mute-button i');
 
                 if (activeVideo) {
-                    // Включаем звук для текущего видео
-                    activeVideo.muted = false;
+                    // Сбрасываем видео в начало и включаем звук по умолчанию
                     activeVideo.currentTime = 0;
+                    activeVideo.muted = false;
+                    if (muteButtonIcon) muteButtonIcon.className = 'fas fa-volume-high';
+                    
                     loadingIndicator.style.display = 'flex';
 
-                    // Пытаемся воспроизвести со звуком
                     const playPromise = activeVideo.play();
                     if (playPromise !== undefined) {
                         playPromise.catch(error => {
-                            // Это может произойти, если браузер блокирует автозапуск со звуком
                             console.error("Autoplay with sound failed, trying muted:", error);
-                            // В качестве запасного варианта воспроизводим без звука
+                            // Если автозапуск со звуком не удался, пробуем без звука
                             activeVideo.muted = true;
+                            if (muteButtonIcon) muteButtonIcon.className = 'fas fa-volume-mute';
                             activeVideo.play();
                         });
                     }
@@ -554,7 +574,6 @@
                 const countEl = document.getElementById('comments-count');
                 list.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
                 panel.classList.add('open');
-                // ИСПРАВЛЕНО: Явно указана связь для профилей комментаторов
                 const { data, error, count } = await supabase.from('comments')
                     .select('*, profiles!comments_user_id_fkey(username, first_name, last_name)', { count: 'exact' })
                     .eq('video_id', videoId)
@@ -591,7 +610,6 @@
                 const input = document.getElementById('comment-input');
                 const text = input.value.trim();
                 if (!text || !activeCommentsVideoId) return;
-                // ИСПРАВЛЕНО: Явно указана связь для профиля при добавлении комментария
                 const { data, error } = await supabase.from('comments').insert({
                     text: text, user_id: user.id, video_id: activeCommentsVideoId
                 }).select('*, profiles!comments_user_id_fkey(username)').single();
@@ -673,7 +691,6 @@
                 let emptyText = "Здесь пока пусто";
 
                 if (content === 'my-videos') {
-                    // ИСПРАВЛЕНО: Явно указана связь
                     const { data, error } = await supabase
                         .from('videos')
                         .select('*, profiles!videos_user_id_fkey(*)')
@@ -683,13 +700,11 @@
                     videosToShow = data || [];
                     emptyText = "Вы еще не загрузили ни одного видео.";
                 } else if (content === 'liked-videos') {
-                    // ИСПРАВЛЕНО: Явно указана связь
                     const { data, error } = await supabase.from('likes').select(`videos!inner(*, profiles!videos_user_id_fkey(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
                     if (error) console.error("Error fetching liked videos:", error);
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
                     emptyText = "Вам еще не понравилось ни одно видео.";
                 } else if (content === 'saved-videos') {
-                    // ИСПРАВЛЕНО: Явно указана связь
                      const { data, error } = await supabase.from('saves').select(`videos!inner(*, profiles!videos_user_id_fkey(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
                      if (error) console.error("Error fetching saved videos:", error);
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
