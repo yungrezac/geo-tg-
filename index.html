@@ -6,20 +6,13 @@
     <title>Guid - Short Video App</title>
     <!-- Подключение Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключение Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Подключение иконок Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* * ===================================================================
-         * Стилизация с использованием переменных темы Telegram
-         * ===================================================================
-         * Этот CSS использует переменные, предоставляемые Telegram SDK.
-         * Это позволяет приложению автоматически адаптироваться к теме
-         * пользователя в Telegram (светлая, темная, кастомная).
-         * Например, var(--tg-theme-bg-color) будет цветом фона,
-         * а var(--tg-theme-text-color) - цветом текста.
-        */
+        /* Стили остаются без изменений, так как они уже используют переменные Telegram */
         :root {
-            /* Основные цвета из темы Telegram */
             --tg-bg: var(--tg-theme-bg-color, #000000);
             --tg-text: var(--tg-theme-text-color, #ffffff);
             --tg-hint: var(--tg-theme-hint-color, #aaaaaa);
@@ -27,546 +20,163 @@
             --tg-button: var(--tg-theme-button-color, #1c9eff);
             --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
             --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #111111);
-            
-            /* Дополнительные цвета для акцентов */
             --accent-red: #ff3b30;
             --border-radius: 12px;
         }
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent; /* Убирает подсветку при нажатии на мобильных */
-        }
-        
-        body {
-            background-color: var(--tg-bg);
-            color: var(--tg-text);
-            height: 100vh;
-            overflow: hidden;
-            position: relative;
-        }
-        
-        /* Общие стили для всех страниц */
-        .page {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: none;
-            overflow-y: auto;
-            padding-bottom: 60px; /* Отступ для нижней навигации */
-            opacity: 0;
-            transform: scale(0.98);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-            background-color: var(--tg-bg);
-        }
-        
-        .page.active {
-            display: block;
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        /* Стили для главной страницы с видео */
-        #home-page {
-            background-color: #000; /* Всегда черный фон для лучшего просмотра видео */
-        }
-        
-        .video-container {
-            width: 100%;
-            height: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .video-wrapper {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            display: none;
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--tg-bg); color: var(--tg-text); height: 100vh; overflow: hidden; position: relative; }
+        .page { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; overflow-y: auto; padding-bottom: 60px; opacity: 0; transform: scale(0.98); transition: opacity 0.3s ease, transform 0.3s ease; background-color: var(--tg-bg); }
+        .page.active { display: block; opacity: 1; transform: scale(1); }
+        #home-page { background-color: #000; }
+        .video-container { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        .video-wrapper { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
         .video-wrapper.active { display: block; z-index: 2; transform: translateY(0); }
         .video-wrapper.next { display: block; z-index: 1; transform: translateY(100%); }
         .video-wrapper.prev { display: block; z-index: 1; transform: translateY(-100%); }
-        
-        .video-player {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background-color: #000;
-        }
-        
-        .video-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%);
-            pointer-events: none; /* Позволяет кликам проходить сквозь оверлей */
-        }
-
-        .video-info {
-            position: absolute;
-            bottom: 75px; /* Отступ от навигации */
-            left: 15px;
-            z-index: 10;
-            max-width: 70%;
-            color: #fff;
-        }
-        
+        .video-player { width: 100%; height: 100%; object-fit: cover; background-color: #000; }
+        .video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%); pointer-events: none; }
+        .video-info { position: absolute; bottom: 75px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
         .username { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
         .description { font-size: 14px; margin-bottom: 10px; line-height: 1.4; }
-        .hashtags { font-size: 14px; font-weight: 500; color: #fff; }
-        
-        .right-sidebar {
-            position: absolute;
-            right: 15px;
-            bottom: 80px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 10;
-            color: #fff;
-        }
-        
-        .avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: 2px solid #fff;
-            margin-bottom: 25px;
-            background-color: var(--tg-secondary-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            position: relative;
-        }
-        
-        .follow-button {
-            position: absolute;
-            bottom: -10px;
-            background-color: var(--accent-red);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #000;
-        }
-        
-        .action-button {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 20px;
-            cursor: pointer;
-        }
-        
-        .action-icon {
-            font-size: 30px;
-            margin-bottom: 5px;
-            transition: transform 0.2s ease;
-        }
+        .right-sidebar { position: absolute; right: 15px; bottom: 80px; display: flex; flex-direction: column; align-items: center; z-index: 10; color: #fff; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #fff; margin-bottom: 25px; background-color: var(--tg-secondary-bg); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; position: relative; }
+        .follow-button { position: absolute; bottom: -10px; background-color: var(--accent-red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid #000; }
+        .action-button { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; cursor: pointer; }
+        .action-icon { font-size: 30px; margin-bottom: 5px; transition: transform 0.2s ease; }
         .action-icon.liked { color: var(--accent-red); }
         .action-button:active .action-icon { transform: scale(0.9); }
         .action-count { font-size: 13px; font-weight: 500; }
-        
-        /* Стили для остальных страниц (Поиск, Создание, Сообщения, Профиль) */
-        .header {
-            padding: 15px;
-            font-size: 20px;
-            font-weight: bold;
-            position: sticky;
-            top: 0;
-            background-color: var(--tg-bg);
-            z-index: 10;
-            border-bottom: 1px solid var(--tg-secondary-bg);
-        }
-
-        .search-bar {
-            display: flex;
-            padding: 15px;
-            position: sticky;
-            top: 0;
-            background-color: var(--tg-bg);
-            z-index: 11;
-        }
-        
-        .search-input {
-            flex: 1;
-            padding: 12px 15px;
-            border-radius: var(--border-radius);
-            border: none;
-            background-color: var(--tg-secondary-bg);
-            color: var(--tg-text);
-            font-size: 16px;
-        }
+        .header { padding: 15px; font-size: 20px; font-weight: bold; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 10; border-bottom: 1px solid var(--tg-secondary-bg); }
+        .search-bar { display: flex; padding: 15px; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 11; }
+        .search-input { flex: 1; padding: 12px 15px; border-radius: var(--border-radius); border: none; background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
         .search-input::placeholder { color: var(--tg-hint); }
-
-        .section-title {
-            font-size: 18px;
-            margin: 20px 15px 15px;
-            font-weight: bold;
-        }
-
-        .profile-header {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .profile-avatar {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            background-color: var(--tg-secondary-bg);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            font-weight: bold;
-            border: 3px solid var(--tg-link);
-        }
-        
+        .section-title { font-size: 18px; margin: 20px 15px 15px; font-weight: bold; }
+        .profile-header { padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .profile-avatar { width: 100px; height: 100px; border-radius: 50%; background-color: var(--tg-secondary-bg); margin-bottom: 15px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; border: 3px solid var(--tg-link); }
         .profile-name { font-size: 22px; font-weight: bold; margin-bottom: 5px; }
         .profile-username { font-size: 16px; color: var(--tg-hint); margin-bottom: 15px; }
-        
-        .profile-stats {
-            display: flex;
-            justify-content: space-around;
-            width: 100%;
-            margin-bottom: 20px;
-            padding: 0 20px;
-        }
-        
+        .profile-stats { display: flex; justify-content: space-around; width: 100%; margin-bottom: 20px; padding: 0 20px; }
         .profile-stat { text-align: center; }
         .stat-value { font-size: 18px; font-weight: bold; }
         .stat-label { font-size: 12px; color: var(--tg-hint); }
-        
-        .profile-actions {
-            display: flex;
-            gap: 10px;
-            width: 100%;
-            padding: 0 15px;
-            margin-bottom: 20px;
-        }
-        
-        .profile-button {
-            flex: 1;
-            padding: 12px;
-            border-radius: var(--border-radius);
-            font-size: 14px;
-            font-weight: bold;
-            text-align: center;
-            cursor: pointer;
-            transition: opacity 0.2s ease;
-        }
+        .profile-actions { display: flex; gap: 10px; width: 100%; padding: 0 15px; margin-bottom: 20px; }
+        .profile-button { flex: 1; padding: 12px; border-radius: var(--border-radius); font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; transition: opacity 0.2s ease; }
         .profile-button:active { opacity: 0.8; }
-        
-        .profile-button-primary {
-            background-color: var(--tg-button);
-            color: var(--tg-button-text);
-        }
-        
-        .profile-button-secondary {
-            background-color: var(--tg-secondary-bg);
-            color: var(--tg-text);
-        }
-        
-        .profile-tabs {
-            display: flex;
-            border-bottom: 1px solid var(--tg-secondary-bg);
-            position: sticky;
-            top: 0;
-            background-color: var(--tg-bg);
-            z-index: 10;
-        }
-        
-        .profile-tab {
-            flex: 1;
-            text-align: center;
-            padding: 15px 0;
-            font-size: 16px;
-            position: relative;
-            cursor: pointer;
-            color: var(--tg-hint);
-        }
-        
-        .profile-tab.active {
-            color: var(--tg-text);
-            font-weight: bold;
-        }
-        
-        .profile-tab.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 25%;
-            width: 50%;
-            height: 3px;
-            background-color: var(--tg-link);
-            border-radius: 3px 3px 0 0;
-        }
-        
-        .content-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2px;
-            padding: 2px;
-        }
-        
-        .grid-item {
-            aspect-ratio: 9/16;
-            background-color: var(--tg-secondary-bg);
-            position: relative;
-            cursor: pointer;
-        }
-        
-        .grid-item-thumbnail {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .inbox-empty {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 60vh;
-            text-align: center;
-            padding: 20px;
-            color: var(--tg-hint);
-        }
-        .inbox-empty-icon { font-size: 50px; margin-bottom: 20px; }
-        .inbox-empty-text { font-size: 16px; margin-bottom: 15px; }
-
-        /* Нижняя навигация */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 60px;
-            background-color: var(--tg-bg);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 100;
-            border-top: 1px solid var(--tg-secondary-bg);
-        }
-        
-        .nav-button {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--tg-hint);
-            font-size: 10px;
-            cursor: pointer;
-            padding: 5px;
-            flex: 1;
-            transition: color 0.2s ease;
-        }
-        
+        .profile-button-primary { background-color: var(--tg-button); color: var(--tg-button-text); }
+        .profile-button-secondary { background-color: var(--tg-secondary-bg); color: var(--tg-text); }
+        .tabs-container { display: flex; border-bottom: 1px solid var(--tg-secondary-bg); position: sticky; top: 0; background-color: var(--tg-bg); z-index: 10; }
+        .tab { flex: 1; text-align: center; padding: 15px 0; font-size: 16px; position: relative; cursor: pointer; color: var(--tg-hint); }
+        .tab.active { color: var(--tg-text); font-weight: bold; }
+        .tab.active::after { content: ''; position: absolute; bottom: 0; left: 25%; width: 50%; height: 3px; background-color: var(--tg-link); border-radius: 3px 3px 0 0; }
+        .content-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; }
+        .grid-item { aspect-ratio: 9/16; background-color: var(--tg-secondary-bg); position: relative; cursor: pointer; }
+        .grid-item-thumbnail { width: 100%; height: 100%; object-fit: cover; }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; padding: 20px; color: var(--tg-hint); }
+        .empty-state-icon { font-size: 50px; margin-bottom: 20px; }
+        .empty-state-text { font-size: 16px; margin-bottom: 15px; }
+        .create-options { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .create-option { background-color: var(--tg-secondary-bg); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; }
+        .create-option:active { background-color: var(--tg-hint); }
+        .create-option-icon { font-size: 30px; color: var(--tg-link); margin-bottom: 10px; }
+        .create-option-title { font-size: 14px; }
+        .message-list { padding: 0 15px; }
+        .message-item { display: flex; align-items: center; padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--tg-secondary-bg); }
+        .message-avatar { width: 50px; height: 50px; border-radius: 50%; background-color: var(--tg-secondary-bg); margin-right: 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .message-body { flex-grow: 1; }
+        .message-sender { font-weight: bold; }
+        .message-preview { color: var(--tg-hint); font-size: 14px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background-color: var(--tg-bg); display: flex; justify-content: space-around; align-items: center; z-index: 100; border-top: 1px solid var(--tg-secondary-bg); }
+        .nav-button { display: flex; flex-direction: column; align-items: center; color: var(--tg-hint); font-size: 10px; cursor: pointer; padding: 5px; flex: 1; transition: color 0.2s ease; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
-        
-        .nav-button.active {
-            color: var(--tg-text);
-            font-weight: bold;
-        }
-        
-        .create-nav-button {
-            background: var(--tg-button);
-            width: 45px;
-            height: 35px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--tg-button-text);
-            font-size: 22px;
-        }
-
-        /* Загрузчик и сообщения */
-        .loading-indicator {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid var(--tg-secondary-bg);
-            border-radius: 50%;
-            border-top-color: var(--tg-link);
-            animation: spin 1s linear infinite;
-        }
-        
+        .nav-button.active { color: var(--tg-text); font-weight: bold; }
+        .create-nav-button { background: var(--tg-button); width: 45px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--tg-button-text); font-size: 22px; }
+        .loading-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; display: flex; flex-direction: column; align-items: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--tg-secondary-bg); border-radius: 50%; border-top-color: var(--tg-link); animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
     </style>
 </head>
 <body>
-    <!-- Главная страница (Лента видео) -->
-    <div id="home-page" class="page active">
-        <div class="video-container" id="video-container">
-            <div class="loading-indicator">
-                <div class="spinner"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Страница поиска -->
-    <div id="discover-page" class="page">
-        <div class="search-bar">
-            <input type="text" class="search-input" placeholder="Поиск">
-        </div>
-        <!-- Здесь будет контент для поиска -->
-    </div>
-    
-    <!-- Страница создания -->
-    <div id="create-page" class="page">
-        <div class="header">Создать</div>
-        <!-- Здесь будет контент для создания видео -->
-    </div>
-    
-    <!-- Страница сообщений -->
-    <div id="inbox-page" class="page">
-        <div class="header">Входящие</div>
-        <div class="inbox-empty">
-            <div class="inbox-empty-icon"><i class="far fa-paper-plane"></i></div>
-            <div class="inbox-empty-text">Все сообщения от друзей появятся здесь</div>
-        </div>
-    </div>
-    
-    <!-- Страница профиля -->
-    <div id="profile-page" class="page">
-        <div class="profile-header">
-            <div class="profile-avatar"></div>
-            <div class="profile-name"></div>
-            <div class="profile-username"></div>
-            
-            <div class="profile-stats">
-                <div class="profile-stat">
-                    <div class="stat-value">1,234</div>
-                    <div class="stat-label">Подписки</div>
-                </div>
-                <div class="profile-stat">
-                    <div class="stat-value">5.7M</div>
-                    <div class="stat-label">Подписчики</div>
-                </div>
-                <div class="profile-stat">
-                    <div class="stat-value">124.5M</div>
-                    <div class="stat-label">Лайки</div>
-                </div>
-            </div>
-            
-            <div class="profile-actions">
-                <div class="profile-button profile-button-secondary">Изменить профиль</div>
-            </div>
-        </div>
-        
-        <div class="profile-tabs">
-            <div class="profile-tab active"><i class="fas fa-th"></i></div>
-            <div class="profile-tab"><i class="far fa-heart"></i></div>
-            <div class="profile-tab"><i class="far fa-bookmark"></i></div>
-        </div>
-        
-        <div class="content-grid" id="profile-videos-grid">
-            <!-- Миниатюры видео будут добавлены сюда -->
-        </div>
-    </div>
-    
-    <!-- Нижняя навигация -->
-    <div class="bottom-nav">
-        <div class="nav-button active" data-page="home-page">
-            <div class="nav-icon"><i class="fas fa-home"></i></div>
-            <div>Главная</div>
-        </div>
-        <div class="nav-button" data-page="discover-page">
-            <div class="nav-icon"><i class="fas fa-search"></i></div>
-            <div>Интересное</div>
-        </div>
-        <div class="nav-button create-nav-button" data-page="create-page">
-            <i class="fas fa-plus"></i>
-        </div>
-        <div class="nav-button" data-page="inbox-page">
-            <div class="nav-icon"><i class="far fa-paper-plane"></i></div>
-            <div>Входящие</div>
-        </div>
-        <div class="nav-button" data-page="profile-page">
-            <div class="nav-icon"><i class="far fa-user"></i></div>
-            <div>Профиль</div>
-        </div>
-    </div>
+    <!-- HTML-структура страниц остается без изменений -->
+    <div id="home-page" class="page active"><div class="video-container" id="video-container"><div class="loading-indicator"><div class="spinner"></div></div></div></div>
+    <div id="discover-page" class="page"><div class="search-bar"><input type="text" class="search-input" placeholder="Поиск видео и пользователей"></div><div id="discover-content" class="content-grid"></div><div id="discover-empty" class="empty-state" style="display: none;"><div class="empty-state-icon"><i class="fas fa-search"></i></div><div class="empty-state-text">Ничего не найдено</div></div></div>
+    <div id="create-page" class="page"><div class="header">Создать</div><div class="create-options"><div class="create-option" data-option="camera"><div class="create-option-icon"><i class="fas fa-camera"></i></div><div class="create-option-title">Камера</div></div><div class="create-option" data-option="upload"><div class="create-option-icon"><i class="fas fa-upload"></i></div><div class="create-option-title">Загрузить</div></div><div class="create-option" data-option="effects"><div class="create-option-icon"><i class="fas fa-magic"></i></div><div class="create-option-title">Эффекты</div></div><div class="create-option" data-option="templates"><div class="create-option-icon"><i class="fas fa-photo-video"></i></div><div class="create-option-title">Шаблоны</div></div></div></div>
+    <div id="inbox-page" class="page"><div class="header">Входящие</div><div id="inbox-content"><div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Здесь будут ваши чаты</div></div></div></div>
+    <div id="profile-page" class="page"><div class="profile-header"><div class="profile-avatar"></div><div class="profile-name"></div><div class="profile-username"></div><div class="profile-stats"><div class="profile-stat"><div class="stat-value">0</div><div class="stat-label">Подписки</div></div><div class="profile-stat"><div class="stat-value">0</div><div class="stat-label">Подписчики</div></div><div class="profile-stat"><div class="stat-value">0</div><div class="stat-label">Лайки</div></div></div><div class="profile-actions"><div class="profile-button profile-button-secondary" id="edit-profile-btn">Изменить профиль</div></div></div><div class="tabs-container" id="profile-tabs"><div class="tab active" data-content="my-videos"><i class="fas fa-th"></i></div><div class="tab" data-content="liked-videos"><i class="far fa-heart"></i></div><div class="tab" data-content="saved-videos"><i class="far fa-bookmark"></i></div></div><div class="content-grid" id="profile-content-grid"></div></div>
+    <div class="bottom-nav"><div class="nav-button active" data-page="home-page"><div class="nav-icon"><i class="fas fa-home"></i></div><div>Главная</div></div><div class="nav-button" data-page="discover-page"><div class="nav-icon"><i class="fas fa-search"></i></div><div>Интересное</div></div><div class="nav-button create-nav-button" data-page="create-page"><i class="fas fa-plus"></i></div><div class="nav-button" data-page="inbox-page"><div class="nav-icon"><i class="far fa-paper-plane"></i></div><div>Входящие</div></div><div class="nav-button" data-page="profile-page"><div class="nav-icon"><i class="far fa-user"></i></div><div>Профиль</div></div></div>
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // ===================================================================
+            // 1. Инициализация SDK и клиентов
+            // ===================================================================
             const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
 
-            // ===================================================================
-            // Инициализация Telegram SDK
-            // ===================================================================
-            tg.ready(); // Сообщаем Telegram, что приложение готово
-            tg.expand(); // Расширяем приложение на весь экран
+            const SUPABASE_URL = 'https://bbtkaiondhlxaxvcvces.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidGthaW9uZGhseGF4dmN2Y2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NDcyNDUsImV4cCI6MjA2OTMyMzI0NX0.yE-IT4RJoJQC8hAtSCgh9Nh4fX-cADts-DDxuOnVloY';
+            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             const initDataUnsafe = tg.initDataUnsafe || {};
-            const user = initDataUnsafe.user || {
-                id: '123456789',
-                first_name: 'User',
-                last_name: '',
-                username: `user_${Math.floor(Math.random() * 1000)}`,
-            };
+            // Используем реального пользователя или тестового, если запускаем не в Telegram
+            const user = initDataUnsafe.user || { id: 123456789, first_name: 'Test', last_name: 'User', username: 'testuser' };
 
             // ===================================================================
-            // Глобальные переменные и моковые данные
+            // 2. Глобальные переменные состояния
             // ===================================================================
-            const mockVideos = [
-                { id: 1, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', username: '@travel_lover', description: 'Beautiful sunset at the beach 🌅 #travel #sunset', likes: 1243, comments: 56, shares: 12 },
-                { id: 2, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', username: '@food_explorer', description: 'Making homemade pasta from scratch 🍝 #food #cooking', likes: 876, comments: 43, shares: 8 },
-                { id: 3, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4', username: '@fitness_guru', description: 'Morning workout routine 💪 #fitness #workout', likes: 1542, comments: 87, shares: 23 },
-                { id: 4, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4', username: '@pet_lover', description: 'My cute puppy playing in the park 🐶 #pets #dogs', likes: 2310, comments: 132, shares: 45 },
-                { id: 5, url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4', username: '@tech_geek', description: 'Unboxing the new smartphone 📱 #tech #gadgets', likes: 987, comments: 76, shares: 34 }
-            ];
+            let videos = [];
             let currentVideoIndex = 0;
             let isSwiping = false;
 
             // ===================================================================
-            // Функции для работы с интерфейсом
+            // 3. Функции для работы с API Supabase
             // ===================================================================
 
-            // Форматирование чисел (1234 -> 1.2K)
-            function formatNumber(num) {
-                if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-                if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-                return num.toString();
+            async function upsertUserProfile() {
+                const { error } = await supabase.from('profiles').upsert({
+                    id: user.id,
+                    username: user.username,
+                    first_name: user.first_name,
+                    last_name: user.last_name || null
+                }, { onConflict: 'id' });
+                if (error) console.error('Error upserting profile:', error);
             }
 
-            // Создание HTML-элемента для видео
+            async function fetchVideos() {
+                const { data, error } = await supabase
+                    .from('videos')
+                    .select(`
+                        id,
+                        video_url,
+                        description,
+                        profiles ( username ),
+                        likes ( user_id ),
+                        saves ( user_id )
+                    `)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching videos:', error);
+                    tg.showAlert('Не удалось загрузить видео.');
+                    return [];
+                }
+                
+                return data.map(v => ({
+                    id: v.id,
+                    url: v.video_url,
+                    username: v.profiles.username,
+                    description: v.description,
+                    likesCount: v.likes.length,
+                    isLiked: v.likes.some(like => like.user_id === user.id),
+                    isSaved: v.saves.some(save => save.user_id === user.id)
+                }));
+            }
+
+            // ===================================================================
+            // 4. Функции для отрисовки интерфейса
+            // ===================================================================
+
             function createVideoElement(videoData, classNames = '') {
                 const videoWrapper = document.createElement('div');
                 videoWrapper.className = `video-wrapper ${classNames}`;
@@ -576,210 +186,184 @@
                     <video class="video-player" src="${videoData.url}" loop muted playsinline></video>
                     <div class="video-overlay"></div>
                     <div class="loading-indicator"><div class="spinner"></div></div>
-                    <div class="video-info">
-                        <div class="username">${videoData.username}</div>
-                        <div class="description">${videoData.description}</div>
-                    </div>
+                    <div class="video-info"><div class="username">@${videoData.username}</div><div class="description">${videoData.description}</div></div>
                     <div class="right-sidebar">
-                        <div class="avatar">${videoData.username.charAt(1).toUpperCase()}<div class="follow-button">+</div></div>
+                        <div class="avatar">${videoData.username.charAt(0).toUpperCase()}<div class="follow-button">+</div></div>
                         <div class="action-button like-btn">
-                            <i class="action-icon far fa-heart"></i>
-                            <div class="action-count">${formatNumber(videoData.likes)}</div>
+                            <i class="action-icon ${videoData.isLiked ? 'fas liked' : 'far'} fa-heart"></i>
+                            <div class="action-count">${videoData.likesCount}</div>
                         </div>
-                        <div class="action-button comment-btn">
-                            <i class="action-icon far fa-comment-dots"></i>
-                            <div class="action-count">${formatNumber(videoData.comments)}</div>
+                        <div class="action-button comment-btn"><i class="action-icon far fa-comment-dots"></i><div class="action-count">0</div></div>
+                        <div class="action-button save-btn">
+                             <i class="action-icon ${videoData.isSaved ? 'fas' : 'far'} fa-bookmark"></i>
                         </div>
-                        <div class="action-button share-btn">
-                            <i class="action-icon fas fa-share"></i>
-                            <div class="action-count">${formatNumber(videoData.shares)}</div>
-                        </div>
-                    </div>
-                `;
-
-                // Обработчики событий для кнопок
-                videoWrapper.querySelector('.like-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleLike(e.currentTarget);
-                });
-                videoWrapper.querySelector('.comment-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    tg.HapticFeedback.impactOccurred('light');
-                    tg.showAlert('Комментарии скоро появятся!');
-                });
-                videoWrapper.querySelector('.share-btn').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    tg.HapticFeedback.impactOccurred('light');
-                    tg.showPopup({
-                        title: 'Поделиться',
-                        message: 'Поделиться этим видео?',
-                        buttons: [
-                            { id: 'share_tg', type: 'default', text: 'В Telegram' },
-                            { id: 'copy_link', type: 'default', text: 'Копировать ссылку' },
-                            { type: 'cancel' },
-                        ]
-                    }, (buttonId) => {
-                        if (buttonId === 'copy_link') {
-                           tg.showAlert('Ссылка скопирована (демо)');
-                        } else if (buttonId === 'share_tg') {
-                            tg.switchInlineQuery(`video ${videoData.id}`);
-                        }
-                    });
-                });
-
-                // Двойной тап для лайка
+                    </div>`;
+                
+                videoWrapper.querySelector('.like-btn').addEventListener('click', (e) => { e.stopPropagation(); handleLike(e.currentTarget, videoData); });
+                videoWrapper.querySelector('.save-btn').addEventListener('click', (e) => { e.stopPropagation(); handleSave(e.currentTarget, videoData); });
+                
                 let lastTap = 0;
-                videoWrapper.addEventListener('click', (e) => {
-                    const currentTime = new Date().getTime();
-                    if (currentTime - lastTap < 300) {
-                        toggleLike(videoWrapper.querySelector('.like-btn'), true);
-                    }
-                    lastTap = currentTime;
-                });
-
+                videoWrapper.addEventListener('click', () => { const now = new Date().getTime(); if (now - lastTap < 300) { handleLike(videoWrapper.querySelector('.like-btn'), videoData, true); } lastTap = now; });
+                
                 return videoWrapper;
             }
-
-            // Переключение лайка
-            function toggleLike(button, fromDoubleTap = false) {
-                const icon = button.querySelector('i');
-                const isLiked = icon.classList.toggle('fas');
-                icon.classList.toggle('far');
-                icon.classList.toggle('liked');
-                
-                if (fromDoubleTap) {
-                    if (!isLiked) return; // Не показывать анимацию, если лайк уже стоял
-                    // Анимация сердечка при двойном тапе
-                    const heart = document.createElement('i');
-                    heart.className = 'fas fa-heart';
-                    heart.style.position = 'absolute';
-                    heart.style.top = '50%';
-                    heart.style.left = '50%';
-                    heart.style.transform = 'translate(-50%, -50%) scale(0)';
-                    heart.style.color = 'rgba(255, 255, 255, 0.8)';
-                    heart.style.fontSize = '80px';
-                    heart.style.transition = 'all 0.5s ease-out';
-                    button.closest('.video-wrapper').appendChild(heart);
-                    setTimeout(() => {
-                        heart.style.transform = 'translate(-50%, -50%) scale(1)';
-                        heart.style.opacity = '0';
-                    }, 10);
-                    setTimeout(() => heart.remove(), 500);
-                }
-                
-                tg.HapticFeedback.impactOccurred(isLiked ? 'medium' : 'light');
-            }
-
-            // Загрузка и отображение видео в ленте
+            
             function renderVideoFeed() {
                 const videoContainer = document.getElementById('video-container');
-                videoContainer.innerHTML = ''; // Очищаем контейнер
-
-                // Создаем текущее, следующее и предыдущее видео
-                const prevIndex = (currentVideoIndex - 1 + mockVideos.length) % mockVideos.length;
-                const nextIndex = (currentVideoIndex + 1) % mockVideos.length;
-
-                const prevVideo = createVideoElement(mockVideos[prevIndex], 'prev');
-                const currentVideo = createVideoElement(mockVideos[currentVideoIndex], 'active');
-                const nextVideo = createVideoElement(mockVideos[nextIndex], 'next');
-
-                videoContainer.append(prevVideo, currentVideo, nextVideo);
+                videoContainer.innerHTML = '';
+                if (videos.length === 0) {
+                    videoContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="fas fa-video-slash"></i></div><div class="empty-state-text">Пока нет видео</div></div>`;
+                    return;
+                }
+                const prevIndex = (currentVideoIndex - 1 + videos.length) % videos.length;
+                const nextIndex = (currentVideoIndex + 1) % videos.length;
+                videoContainer.append(createVideoElement(videos[prevIndex], 'prev'), createVideoElement(videos[currentVideoIndex], 'active'), createVideoElement(videos[nextIndex], 'next'));
                 playCurrentVideo();
             }
 
-            // Воспроизведение текущего видео
             function playCurrentVideo() {
                 document.querySelectorAll('.video-player').forEach(v => v.pause());
                 const activeVideo = document.querySelector('.video-wrapper.active .video-player');
-                if (activeVideo) {
-                    activeVideo.play().catch(e => console.error("Ошибка воспроизведения:", e));
-                }
+                if (activeVideo) activeVideo.play().catch(e => console.error("Play error:", e));
             }
 
-            // Переход к следующему/предыдущему видео
             function navigateVideo(direction) {
-                if (isSwiping) return;
+                if (isSwiping || videos.length === 0) return;
                 isSwiping = true;
-
-                currentVideoIndex = (currentVideoIndex + direction + mockVideos.length) % mockVideos.length;
+                currentVideoIndex = (currentVideoIndex + direction + videos.length) % videos.length;
                 renderVideoFeed();
                 tg.HapticFeedback.impactOccurred('light');
-
-                setTimeout(() => { isSwiping = false; }, 500); // Задержка для предотвращения быстрых свайпов
+                setTimeout(() => { isSwiping = false; }, 500);
             }
 
-            // ===================================================================
-            // Навигация по приложению
-            // ===================================================================
-            function navigateToPage(pageId) {
-                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-                document.getElementById(pageId).classList.add('active');
+            function createGridItem(video) {
+                const item = document.createElement('div');
+                item.className = 'grid-item';
+                item.innerHTML = `<img src="https://placehold.co/270x480/111111/ffffff?text=Video" class="grid-item-thumbnail" alt="video thumbnail">`;
+                return item;
+            }
 
-                document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
-                const navButton = document.querySelector(`.nav-button[data-page="${pageId}"]`);
-                if (navButton) navButton.classList.add('active');
-
-                // Показываем или скрываем кнопку "Назад"
-                if (pageId === 'home-page') {
-                    tg.BackButton.hide();
-                    playCurrentVideo();
-                } else {
-                    tg.BackButton.show();
-                    document.querySelectorAll('.video-player').forEach(v => v.pause());
+            function renderGridContent(containerId, data) {
+                const grid = document.getElementById(containerId);
+                grid.innerHTML = '';
+                if (data.length === 0) {
+                    grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-state-icon"><i class="fas fa-video-slash"></i></div><div class="empty-state-text">Здесь пока пусто</div></div>`;
+                    return;
                 }
-                
-                tg.HapticFeedback.impactOccurred('light');
+                data.forEach(video => grid.appendChild(createGridItem(video)));
             }
 
-            // Настройка обработчиков событий навигации
-            document.querySelectorAll('.nav-button').forEach(button => {
-                button.addEventListener('click', () => navigateToPage(button.dataset.page));
-            });
+            function populateDiscoverPage(query = '') {
+                const filteredVideos = videos.filter(v => v.description.toLowerCase().includes(query.toLowerCase()) || v.username.toLowerCase().includes(query.toLowerCase()));
+                document.getElementById('discover-empty').style.display = filteredVideos.length === 0 ? 'flex' : 'none';
+                renderGridContent('discover-content', filteredVideos);
+            }
 
-            // Обработка кнопки "Назад"
-            tg.BackButton.onClick(() => {
-                navigateToPage('home-page');
-            });
-
-            // ===================================================================
-            // Заполнение контента
-            // ===================================================================
-            function populateProfile() {
+            async function populateProfile() {
                 document.querySelector('.profile-avatar').textContent = (user.first_name.charAt(0) + (user.last_name?.charAt(0) || '')).toUpperCase();
                 document.querySelector('.profile-name').textContent = `${user.first_name} ${user.last_name || ''}`.trim();
                 document.querySelector('.profile-username').textContent = `@${user.username}`;
+                renderGridContent('profile-content-grid', videos.filter(v => v.username === user.username));
+            }
 
-                const grid = document.getElementById('profile-videos-grid');
-                grid.innerHTML = '';
-                mockVideos.forEach(video => {
-                    const item = document.createElement('div');
-                    item.className = 'grid-item';
-                    item.innerHTML = `<img src="https://via.placeholder.com/270x480.png/181818/181818" class="grid-item-thumbnail" alt="video thumbnail">`; // Используем заглушки
-                    grid.appendChild(item);
-                });
+            function navigateToPage(pageId) {
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
+                const navButton = document.querySelector(`.nav-button[data-page="${pageId}"]`);
+                if (navButton) navButton.classList.add('active');
+                if (pageId === 'home-page') { tg.BackButton.hide(); playCurrentVideo(); } else { tg.BackButton.show(); document.querySelectorAll('.video-player').forEach(v => v.pause()); }
+                if (pageId === 'discover-page') populateDiscoverPage();
+                if (pageId === 'profile-page') populateProfile();
+                tg.HapticFeedback.impactOccurred('light');
             }
 
             // ===================================================================
-            // Обработка свайпов
+            // 5. Обработчики действий пользователя
             // ===================================================================
-            let touchStartY = 0;
-            document.getElementById('home-page').addEventListener('touchstart', (e) => {
-                touchStartY = e.touches[0].clientY;
-            }, { passive: true });
-
-            document.getElementById('home-page').addEventListener('touchend', (e) => {
-                const touchEndY = e.changedTouches[0].clientY;
-                const deltaY = touchEndY - touchStartY;
-                if (Math.abs(deltaY) > 50) { // Порог свайпа
-                    navigateVideo(deltaY > 0 ? -1 : 1);
+            
+            async function handleLike(button, videoData, fromDoubleTap = false) {
+                if (fromDoubleTap && videoData.isLiked) return;
+                
+                videoData.isLiked = !videoData.isLiked;
+                videoData.likesCount += videoData.isLiked ? 1 : -1;
+                const icon = button.querySelector('i');
+                const countEl = button.querySelector('.action-count');
+                icon.classList.toggle('fas', videoData.isLiked);
+                icon.classList.toggle('far', !videoData.isLiked);
+                icon.classList.toggle('liked', videoData.isLiked);
+                countEl.textContent = videoData.likesCount;
+                
+                if (fromDoubleTap && videoData.isLiked) {
+                    const heart = document.createElement('i');
+                    heart.className = 'fas fa-heart';
+                    Object.assign(heart.style, { position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) scale(0)', color: 'rgba(255, 255, 255, 0.8)', fontSize: '80px', transition: 'all 0.5s ease-out', pointerEvents: 'none' });
+                    button.closest('.video-wrapper').appendChild(heart);
+                    setTimeout(() => { heart.style.transform = 'translate(-50%, -50%) scale(1)'; heart.style.opacity = '0'; }, 10);
+                    setTimeout(() => heart.remove(), 500);
                 }
-            }, { passive: true });
+
+                tg.HapticFeedback.impactOccurred(videoData.isLiked ? 'medium' : 'light');
+
+                if (videoData.isLiked) {
+                    await supabase.from('likes').insert({ video_id: videoData.id, user_id: user.id });
+                } else {
+                    await supabase.from('likes').delete().match({ video_id: videoData.id, user_id: user.id });
+                }
+            }
+
+            async function handleSave(button, videoData) {
+                videoData.isSaved = !videoData.isSaved;
+                const icon = button.querySelector('i');
+                icon.classList.toggle('fas', videoData.isSaved);
+                icon.classList.toggle('far', !videoData.isSaved);
+                tg.HapticFeedback.impactOccurred('light');
+                
+                // Используем showPopup для более наглядного уведомления
+                tg.showPopup({
+                    title: videoData.isSaved ? 'Сохранено' : 'Сохранение отменено',
+                    message: 'Вы всегда можете найти это видео во вкладке "Сохраненное" в вашем профиле.',
+                    buttons: [{ type: 'ok' }]
+                });
+
+                if (videoData.isSaved) {
+                    await supabase.from('saves').insert({ video_id: videoData.id, user_id: user.id });
+                } else {
+                    await supabase.from('saves').delete().match({ video_id: videoData.id, user_id: user.id });
+                }
+            }
 
             // ===================================================================
-            // Первоначальный запуск
+            // 6. Инициализация приложения
             // ===================================================================
-            populateProfile();
-            renderVideoFeed();
+            
+            document.querySelectorAll('.nav-button').forEach(b => b.addEventListener('click', () => navigateToPage(b.dataset.page)));
+            tg.BackButton.onClick(() => navigateToPage('home-page'));
+            let touchStartY = 0;
+            document.getElementById('home-page').addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+            document.getElementById('home-page').addEventListener('touchend', (e) => { const dY = e.changedTouches[0].clientY - touchStartY; if (Math.abs(dY) > 50) navigateVideo(dY > 0 ? -1 : 1); }, { passive: true });
+            document.querySelector('.search-input').addEventListener('input', (e) => populateDiscoverPage(e.target.value));
+            document.getElementById('profile-tabs').addEventListener('click', (e) => {
+                const tab = e.target.closest('.tab');
+                if (!tab) return;
+                document.querySelectorAll('#profile-tabs .tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const content = tab.dataset.content;
+                let videosToShow = [];
+                if (content === 'my-videos') videosToShow = videos.filter(v => v.username === user.username);
+                if (content === 'liked-videos') videosToShow = videos.filter(v => v.isLiked);
+                if (content === 'saved-videos') videosToShow = videos.filter(v => v.isSaved);
+                renderGridContent('profile-content-grid', videosToShow);
+            });
+
+            async function main() {
+                await upsertUserProfile();
+                videos = await fetchVideos();
+                renderVideoFeed();
+                populateProfile();
+            }
+
+            main();
         });
     </script>
 </body>
