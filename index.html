@@ -181,62 +181,6 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // ===================================================================
-            // !!! ВАЖНО: НАСТРОЙКА ПРАВ ДОСТУПА (ROW LEVEL SECURITY) В SUPABASE !!!
-            // ===================================================================
-            //
-            // Ошибки "ничего не найдено" и "не удается загрузить" почти всегда 
-            // связаны с отсутствием прав доступа в Supabase.
-            //
-            // Чтобы приложение заработало, зайдите в ваш проект Supabase,
-            // откройте "SQL Editor" и выполните следующие запросы ОДИН ЗА ДРУГИМ.
-            //
-            // 1. РАЗРЕШИТЬ ЧТЕНИЕ ВСЕХ ПРОФИЛЕЙ:
-            //    (Нужно, чтобы видеть авторов видео)
-            //
-            //    CREATE POLICY "Public profiles are viewable by everyone."
-            //    ON public.profiles FOR SELECT
-            //    USING ( true );
-            //
-            // 2. РАЗРЕШИТЬ ПОЛЬЗОВАТЕЛЯМ ОБНОВЛЯТЬ СВОЙ ПРОФИЛЬ:
-            //
-            //    CREATE POLICY "Users can update their own profile."
-            //    ON public.profiles FOR UPDATE
-            //    USING ( auth.uid() = id );
-            //
-            // 3. РАЗРЕШИТЬ ЧТЕНИЕ ВСЕХ ВИДЕО:
-            //    (Нужно для главной ленты)
-            //
-            //    CREATE POLICY "Videos are viewable by everyone."
-            //    ON public.videos FOR SELECT
-            //    USING ( true );
-            //
-            // 4. РАЗРЕШИТЬ ПОЛЬЗОВАТЕЛЯМ ЗАГРУЖАТЬ СВОИ ВИДЕО:
-            //
-            //    CREATE POLICY "Users can insert their own videos."
-            //    ON public.videos FOR INSERT
-            //    WITH CHECK ( auth.uid() = user_id );
-            //
-            // 5. НАСТРОЙКА ХРАНИЛИЩА (Storage):
-            //    Зайдите в "Storage" -> "Policies". Выберите бакет "video".
-            //    Создайте 2 новых правила (Policy):
-            //
-            //    a) ПРАВИЛО ДЛЯ ЧТЕНИЯ ФАЙЛОВ (SELECT):
-            //       - Policy Name: "Allow public read access"
-            //       - Allowed operations: Отметьте "select"
-            //       - Target roles: anon, authenticated
-            //       - Policy definition (USING expression): true
-            //
-            //    b) ПРАВИЛО ДЛЯ ЗАГРУЗКИ ФАЙЛОВ (INSERT):
-            //       - Policy Name: "Allow authenticated users to upload"
-            //       - Allowed operations: Отметьте "insert"
-            //       - Target roles: authenticated
-            //       - Policy definition (WITH CHECK expression): bucket_id = 'video'
-            //
-            // ПОСЛЕ ВЫПОЛНЕНИЯ ЭТИХ ШАГОВ ПРИЛОЖЕНИЕ ДОЛЖНО ЗАРАБОТАТЬ.
-            //
-            // ===================================================================
-
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
@@ -246,6 +190,7 @@
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
             const initDataUnsafe = tg.initDataUnsafe || {};
+            // Для тестов в браузере используем mock-данные
             const user = initDataUnsafe.user || { id: 123456789, first_name: 'Test', last_name: 'User', username: 'testuser' };
 
             let videos = [];
@@ -267,6 +212,8 @@
             }
 
             async function fetchVideos() {
+                // ИСПРАВЛЕНО: Явно указана связь `videos.user_id -> profiles.id`
+                // Это устраняет ошибку "more than one relationship was found".
                 const { data, error } = await supabase
                     .from('videos')
                     .select(`
@@ -280,7 +227,7 @@
 
                 if (error) {
                     console.error('Error fetching videos:', error);
-                    tg.showAlert(`Не удалось загрузить видео: ${error.message}. Проверьте RLS-правила для таблиц 'videos' и 'profiles' в Supabase.`);
+                    tg.showAlert(`Не удалось загрузить видео: ${error.message}.`);
                     return [];
                 }
                 
@@ -549,11 +496,7 @@
                 icon.classList.toggle('fas', videoData.isSaved);
                 icon.classList.toggle('far', !videoData.isSaved);
                 tg.HapticFeedback.impactOccurred('light');
-                tg.showPopup({
-                    title: videoData.isSaved ? 'Сохранено' : 'Сохранение отменено',
-                    message: 'Вы всегда можете найти это видео во вкладке "Сохраненное" в вашем профиле.',
-                    buttons: [{ type: 'ok' }]
-                });
+                tg.showAlert(videoData.isSaved ? 'Видео сохранено.' : 'Сохранение отменено.');
                 if (videoData.isSaved) {
                     await supabase.from('saves').insert({ video_id: videoData.id, user_id: user.id });
                 } else {
@@ -567,8 +510,9 @@
                 const countEl = document.getElementById('comments-count');
                 list.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
                 panel.classList.add('open');
+                // ИСПРАВЛЕНО: Явно указана связь для профилей комментаторов
                 const { data, error, count } = await supabase.from('comments')
-                    .select('*, profiles(username, first_name, last_name)', { count: 'exact' })
+                    .select('*, profiles!comments_user_id_fkey(username, first_name, last_name)', { count: 'exact' })
                     .eq('video_id', videoId)
                     .order('created_at', { ascending: true });
                 if (error) {
@@ -603,9 +547,10 @@
                 const input = document.getElementById('comment-input');
                 const text = input.value.trim();
                 if (!text || !activeCommentsVideoId) return;
+                // ИСПРАВЛЕНО: Явно указана связь для профиля при добавлении комментария
                 const { data, error } = await supabase.from('comments').insert({
                     text: text, user_id: user.id, video_id: activeCommentsVideoId
-                }).select('*, profiles(username)').single();
+                }).select('*, profiles!comments_user_id_fkey(username)').single();
                 if (error) {
                     console.error('Error posting comment:', error);
                     tg.showAlert('Не удалось отправить комментарий.');
@@ -698,7 +643,7 @@
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
                     emptyText = "Вам еще не понравилось ни одно видео.";
                 } else if (content === 'saved-videos') {
-                    const { data, error } = await supabase.from('saves').select(`videos!inner(*, profiles!inner(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
+                     const { data, error } = await supabase.from('saves').select(`videos!inner(*, profiles!inner(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
                      if (error) console.error("Error fetching saved videos:", error);
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
                     emptyText = "Вы еще ничего не сохранили.";
@@ -750,7 +695,7 @@
 
                 if (uploadError) {
                     console.error('Upload error:', uploadError);
-                    tg.showAlert(`Ошибка загрузки файла: ${uploadError.message}. Проверьте права (Policies) для INSERT в бакете 'video' в Supabase.`);
+                    tg.showAlert(`Ошибка загрузки файла: ${uploadError.message}.`);
                     resetBtn();
                     return;
                 }
@@ -767,12 +712,12 @@
 
                 if (dbError) {
                     console.error('Database error:', dbError);
-                    tg.showAlert(`Ошибка сохранения данных: ${dbError.message}. Проверьте права (RLS) для INSERT в таблице 'videos' в Supabase.`);
+                    tg.showAlert(`Ошибка сохранения данных: ${dbError.message}.`);
                     resetBtn();
                     return;
                 }
                 
-                tg.showPopup({ title: 'Успех!', message: 'Ваше видео опубликовано.', buttons: [{type: 'ok'}] });
+                tg.showAlert('Успех! Ваше видео опубликовано.');
                 
                 document.getElementById('upload-form').style.display = 'none';
                 document.getElementById('video-description').value = '';
@@ -817,7 +762,7 @@
                     console.error("Profile save error:", error);
                     tg.showAlert('Ошибка сохранения: ' + error.message);
                 } else {
-                    tg.showPopup({ title: 'Сохранено!', message: 'Ваш профиль обновлен.', buttons: [{type: 'ok'}] });
+                    tg.showAlert('Сохранено! Ваш профиль обновлен.');
                     await populateProfile(user.id);
                     navigateToPage('profile-page');
                 }
