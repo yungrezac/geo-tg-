@@ -33,10 +33,11 @@
         .video-wrapper.prev { display: block; z-index: 1; transform: translateY(-100%); }
         .video-player { width: 100%; height: 100%; object-fit: cover; background-color: #000; }
         .video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%); pointer-events: none; }
-        .video-info { position: absolute; bottom: 70px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
+        /* ИЗМЕНЕНО: Элементы опущены ниже к навбару */
+        .video-info { position: absolute; bottom: 65px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
         .username { font-weight: bold; font-size: 16px; margin-bottom: 5px; cursor: pointer; }
         .description { font-size: 14px; margin-bottom: 10px; line-height: 1.4; }
-        .right-sidebar { position: absolute; right: 15px; bottom: 70px; display: flex; flex-direction: column; align-items: center; z-index: 10; color: #fff; }
+        .right-sidebar { position: absolute; right: 15px; bottom: 65px; display: flex; flex-direction: column; align-items: center; z-index: 10; color: #fff; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #fff; margin-bottom: 25px; background-color: var(--tg-secondary-bg); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; position: relative; }
         .follow-button { position: absolute; bottom: -10px; background-color: var(--accent-red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid #000; cursor: pointer; }
         .action-button { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; cursor: pointer; }
@@ -303,6 +304,9 @@
                         <div class="action-button save-btn">
                             <i class="action-icon ${videoData.isSaved ? 'fas' : 'far'} fa-bookmark"></i>
                         </div>
+                        <div class="action-button share-btn">
+                            <i class="action-icon fas fa-share"></i>
+                        </div>
                     </div>`;
                 
                 const videoPlayer = videoWrapper.querySelector('.video-player');
@@ -317,6 +321,7 @@
                 videoWrapper.querySelector('.like-btn').addEventListener('click', (e) => { e.stopPropagation(); handleLike(videoWrapper, videoData); });
                 videoWrapper.querySelector('.save-btn').addEventListener('click', (e) => { e.stopPropagation(); handleSave(videoWrapper, videoData); });
                 videoWrapper.querySelector('.comment-btn').addEventListener('click', (e) => { e.stopPropagation(); openComments(videoData.id); });
+                videoWrapper.querySelector('.share-btn').addEventListener('click', (e) => { e.stopPropagation(); handleShare(videoData); });
                 videoWrapper.querySelector('.username').addEventListener('click', (e) => { e.stopPropagation(); navigateToUserProfile(videoData.userId); });
                 videoWrapper.querySelector('.avatar').addEventListener('click', (e) => { e.stopPropagation(); navigateToUserProfile(videoData.userId); });
 
@@ -562,6 +567,19 @@
                     await supabase.from('saves').delete().match({ video_id: videoData.id, user_id: user.id });
                 }
             }
+            
+            // ДОБАВЛЕНО: Функция для кнопки "Поделиться"
+            function handleShare(videoData) {
+                const shareText = `Смотри это видео от @${videoData.username}: ${videoData.description}`;
+                // В реальном приложении здесь должна быть ссылка на ваше приложение или бота с параметром для открытия конкретного видео
+                const shareUrl = window.location.href; 
+                
+                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                
+                tg.openTelegramLink(telegramShareUrl);
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+
             async function openComments(videoId) {
                 activeCommentsVideoId = videoId;
                 const panel = document.getElementById('comments-panel');
