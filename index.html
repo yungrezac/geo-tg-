@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Стили остаются без изменений, так как они уже используют переменные Telegram */
         :root {
             --tg-bg: var(--tg-theme-bg-color, #000000);
             --tg-text: var(--tg-theme-text-color, #ffffff);
@@ -45,18 +44,7 @@
         .action-icon.liked { color: var(--accent-red); }
         .action-button:active .action-icon { transform: scale(0.9); }
         .action-count { font-size: 13px; font-weight: 500; }
-        
-        .mute-button {
-            position: absolute;
-            top: 66px;
-            right: 15px;
-            z-index: 11;
-            color: #fff;
-            font-size: 24px;
-            cursor: pointer;
-            text-shadow: 0 0 5px rgba(0,0,0,0.5);
-        }
-
+        .mute-button { position: absolute; top: 66px; right: 15px; z-index: 11; color: #fff; font-size: 24px; cursor: pointer; text-shadow: 0 0 5px rgba(0,0,0,0.5); }
         .header { padding: 15px; font-size: 20px; font-weight: bold; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 10; border-bottom: 1px solid var(--tg-secondary-bg); }
         .search-bar { display: flex; padding: 15px; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 11; }
         .search-input { flex: 1; padding: 12px 15px; border-radius: var(--border-radius); border: none; background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
@@ -85,17 +73,6 @@
         .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 40vh; text-align: center; padding: 20px; color: var(--tg-hint); }
         .empty-state-icon { font-size: 50px; margin-bottom: 20px; }
         .empty-state-text { font-size: 16px; margin-bottom: 15px; }
-        .create-options { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .create-option { background-color: var(--tg-secondary-bg); border-radius: var(--border-radius); padding: 20px; text-align: center; cursor: pointer; }
-        .create-option:active { background-color: var(--tg-hint); }
-        .create-option-icon { font-size: 30px; color: var(--tg-link); margin-bottom: 10px; }
-        .create-option-title { font-size: 14px; }
-        .message-list { padding: 0 15px; }
-        .message-item { display: flex; align-items: center; padding: 10px 0; cursor: pointer; border-bottom: 1px solid var(--tg-secondary-bg); }
-        .message-avatar { width: 50px; height: 50px; border-radius: 50%; background-color: var(--tg-secondary-bg); margin-right: 15px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .message-body { flex-grow: 1; }
-        .message-sender { font-weight: bold; }
-        .message-preview { color: var(--tg-hint); font-size: 14px; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background-color: var(--tg-bg); display: flex; justify-content: space-around; align-items: center; z-index: 100; border-top: 1px solid var(--tg-secondary-bg); }
         .nav-button { display: flex; flex-direction: column; align-items: center; color: var(--tg-hint); font-size: 10px; cursor: pointer; padding: 5px; flex: 1; transition: color 0.2s ease; }
         .nav-icon { font-size: 24px; margin-bottom: 3px; }
@@ -104,18 +81,7 @@
         .loading-indicator { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; display: flex; flex-direction: column; align-items: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--tg-secondary-bg); border-radius: 50%; border-top-color: var(--tg-link); animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        #discover-page, #create-page, #inbox-page, #profile-page, #user-profile-page, #edit-profile-page {
-             padding-top: 40px;
-        }
-
-        .comments-panel {
-            position: fixed; bottom: 0; left: 0; width: 100%; height: 80vh; 
-            background-color: var(--tg-secondary-bg);
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            transform: translateY(100%); transition: transform 0.3s ease-out;
-            z-index: 200; display: flex; flex-direction: column;
-        }
+        .comments-panel { position: fixed; bottom: 0; left: 0; width: 100%; height: 80vh; background-color: var(--tg-secondary-bg); border-radius: var(--border-radius) var(--border-radius) 0 0; transform: translateY(100%); transition: transform 0.3s ease-out; z-index: 200; display: flex; flex-direction: column; }
         .comments-panel.open { transform: translateY(0); }
         .comments-header { padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid var(--tg-hint); position: relative; flex-shrink: 0; }
         .comments-header .close-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; font-size: 20px; }
@@ -127,33 +93,60 @@
         .comment-input-container { display: flex; padding: 10px 15px; border-top: 1px solid var(--tg-hint); flex-shrink: 0; }
         .comment-input { flex-grow: 1; background-color: var(--tg-bg); border: none; padding: 10px; border-radius: var(--border-radius); color: var(--tg-text); }
         .comment-send-btn { background: none; border: none; color: var(--tg-link); font-size: 24px; margin-left: 10px; cursor: pointer; }
-        
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--tg-hint); font-size: 14px; }
-        .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: var(--border-radius); border: 1px solid var(--tg-secondary-bg); background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border-radius: var(--border-radius); border: 1px solid var(--tg-secondary-bg); background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
         #upload-progress { width: 100%; height: 5px; background-color: var(--tg-secondary-bg); border-radius: 5px; margin-top: 10px; display: none; }
         #upload-progress-bar { width: 0; height: 100%; background-color: var(--tg-link); border-radius: 5px; transition: width 0.2s; }
+        
+        /* Стили для анкеты */
+        .onboarding-step { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; height: 100%; }
+        .onboarding-step.active { display: flex; }
+        .onboarding-step h2 { font-size: 24px; margin-bottom: 20px; }
+        .onboarding-options { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; }
+        .onboarding-option { padding: 15px; background-color: var(--tg-secondary-bg); border-radius: var(--border-radius); cursor: pointer; }
+        #city-list { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid var(--tg-secondary-bg); border-radius: var(--border-radius); }
+        .city-item { padding: 10px 15px; cursor: pointer; }
+        .city-item:hover { background-color: var(--tg-hint); }
+
+        /* Стили для фильтров */
+        .filters-container { display: flex; gap: 10px; padding: 10px 15px; background-color: var(--tg-bg); }
+        .filter-select { flex: 1; }
     </style>
 </head>
 <body>
     <!-- Pages -->
     <div id="home-page" class="page active"><div class="video-container" id="video-container"><div class="loading-indicator"><div class="spinner"></div></div></div></div>
-    <div id="discover-page" class="page"><div class="search-bar"><input type="text" class="search-input" placeholder="Поиск видео и пользователей"></div><div id="discover-content" class="content-grid"></div><div id="discover-empty" class="empty-state" style="display: none;"><div class="empty-state-icon"><i class="fas fa-search"></i></div><div class="empty-state-text">Ничего не найдено</div></div></div>
-    
+    <div id="discover-page" class="page">
+        <div class="search-bar"><input type="text" class="search-input" placeholder="Поиск видео и пользователей"></div>
+        <div class="filters-container">
+            <select id="filter-discipline" class="filter-select form-group"><option value="">Все дисциплины</option></select>
+            <select id="filter-style" class="filter-select form-group"><option value="">Все стили</option></select>
+            <select id="filter-city" class="filter-select form-group"><option value="">Все города</option></select>
+        </div>
+        <div id="discover-content" class="content-grid"></div>
+        <div id="discover-empty" class="empty-state" style="display: none;"><div class="empty-state-icon"><i class="fas fa-search"></i></div><div class="empty-state-text">Ничего не найдено</div></div>
+    </div>
     <div id="create-page" class="page">
         <div class="header">Создать видео</div>
         <input type="file" id="video-file-input" accept="video/*" style="display: none;">
-        
         <div id="upload-form" style="display: none; padding: 15px;">
             <div class="form-group">
                 <label for="video-description">Описание</label>
                 <textarea id="video-description" rows="3" placeholder="Расскажите о вашем видео..."></textarea>
             </div>
+            <div class="form-group">
+                <label for="video-discipline">Дисциплина</label>
+                <select id="video-discipline"></select>
+            </div>
+            <div class="form-group">
+                <label for="video-style">Стиль</label>
+                <select id="video-style"></select>
+            </div>
             <div class="profile-button profile-button-primary" id="publish-video-btn" style="display: none;">Опубликовать</div>
             <div id="upload-progress"><div id="upload-progress-bar"></div></div>
         </div>
     </div>
-
     <div id="inbox-page" class="page"><div class="header">Входящие</div><div id="inbox-content"><div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Здесь будут ваши чаты</div></div></div></div>
     <div id="profile-page" class="page"></div>
     <div id="edit-profile-page" class="page">
@@ -175,6 +168,28 @@
         </div>
     </div>
     <div id="user-profile-page" class="page"></div>
+    <!-- Новая страница для просмотра одного видео -->
+    <div id="video-viewer-page" class="page"></div>
+    <!-- Новая страница для анкеты -->
+    <div id="onboarding-page" class="page">
+        <div id="onboarding-step-1" class="onboarding-step active">
+            <h2>Чем ты занимаешься?</h2>
+            <div class="onboarding-options">
+                <div class="onboarding-option" data-discipline="Ролики">Ролики</div>
+                <div class="onboarding-option" data-discipline="Скейт">Скейт</div>
+                <div class="onboarding-option" data-discipline="BMX">BMX</div>
+            </div>
+        </div>
+        <div id="onboarding-step-2" class="onboarding-step">
+            <h2>Выбери свой стиль</h2>
+            <div id="style-options" class="onboarding-options"></div>
+        </div>
+        <div id="onboarding-step-3" class="onboarding-step">
+            <h2>Из какого ты города?</h2>
+            <input type="text" id="city-search" class="search-input" placeholder="Поиск города..." style="margin-bottom: 15px;">
+            <div id="city-list" class="onboarding-options"></div>
+        </div>
+    </div>
 
     <!-- Comments Panel -->
     <div id="comments-panel" class="comments-panel">
@@ -217,6 +232,7 @@
             let activeCommentsVideoId = null;
             let selectedFile = null;
             let isInitialized = false;
+            let userProfile = null;
 
             let mainButtonAction = () => {};
             const mainButtonClickHandler = () => {
@@ -235,20 +251,24 @@
                     last_name: user.last_name || null
                 }, { onConflict: 'id' }).select().single();
                 if (error) console.error('Error upserting profile:', error);
+                userProfile = data;
                 return data;
             }
 
-            async function fetchVideos() {
-                const { data, error } = await supabase
-                    .from('videos')
-                    .select(`
-                        id, video_url, description, user_id,
-                        profiles!videos_user_id_fkey( id, username, first_name, last_name ),
-                        likes ( user_id ),
-                        saves ( user_id ),
-                        comments ( id )
-                    `)
-                    .order('created_at', { ascending: false });
+            async function fetchVideos(filters = {}) {
+                let query = supabase.from('videos').select(`
+                    id, video_url, description, user_id,
+                    profiles!videos_user_id_fkey( id, username, first_name, last_name, city ),
+                    likes ( user_id ),
+                    saves ( user_id ),
+                    comments ( id )
+                `).order('created_at', { ascending: false });
+
+                if (filters.discipline) query = query.eq('discipline', filters.discipline);
+                if (filters.style) query = query.eq('style', filters.style);
+                if (filters.city) query = query.eq('profiles.city', filters.city);
+
+                const { data, error } = await query;
 
                 if (error) {
                     console.error('Error fetching videos:', error);
@@ -429,14 +449,21 @@
                 item.className = 'grid-item';
                 item.innerHTML = `<video muted playsinline class="grid-item-thumbnail" src="${video.url}#t=0.5" preload="metadata"></video>`;
                 item.addEventListener('click', () => {
-                   const videoIndex = videos.findIndex(v => v.id === video.id);
-                   if (videoIndex > -1) {
-                        currentVideoIndex = videoIndex;
-                        renderVideoFeed();
-                        navigateToPage('home-page');
-                   }
+                   openVideoViewer(video);
                 });
                 return item;
+            }
+
+            function openVideoViewer(videoData) {
+                const viewerPage = document.getElementById('video-viewer-page');
+                viewerPage.innerHTML = ''; // Очищаем предыдущее видео
+                const videoWrapper = createVideoElement(videoData, 'active');
+                viewerPage.appendChild(videoWrapper);
+                navigateToPage('video-viewer-page');
+                const videoPlayer = videoWrapper.querySelector('.video-player');
+                if (videoPlayer) {
+                    videoPlayer.play().catch(e => console.error("Play error in viewer:", e));
+                }
             }
 
             function renderGridContent(containerId, data, emptyText = "Здесь пока пусто") {
@@ -460,11 +487,10 @@
 
                 const stats = await fetchProfileStats(profileId);
                 
-                // ИЗМЕНЕНО: HTML для кнопок в профиле
                 const profileActionsHTML = isMyProfile ? `
                     <div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic">Изменить профиль</div>
-                    <div class="profile-button profile-button-secondary" id="share-profile-btn"><i class="fas fa-share-alt"></i></div>
-                    <div class="profile-button profile-button-secondary" id="settings-btn"><i class="fas fa-cog"></i></div>
+                    <div class="profile-button profile-button-secondary" id="share-profile-btn" style="flex: 0.5;"><i class="fas fa-share-alt"></i></div>
+                    <div class="profile-button profile-button-secondary" id="settings-btn" style="flex: 0.5;"><i class="fas fa-cog"></i></div>
                 ` : '';
 
                 const profileHTML = `
@@ -525,9 +551,8 @@
                 const activePage = document.querySelector('.page.active');
                 const isHomePage = activePage.id === 'home-page';
 
-                // ИЗМЕНЕНО: Скрытие/показ навбара
                 const bottomNav = document.querySelector('.bottom-nav');
-                if (pageId === 'create-page') {
+                if (['create-page', 'edit-profile-page', 'video-viewer-page'].includes(pageId)) {
                     bottomNav.style.display = 'none';
                 } else {
                     bottomNav.style.display = 'flex';
@@ -547,7 +572,6 @@
 
                 tg.HapticFeedback.impactOccurred('light');
 
-                // ИЗМЕНЕНО: Управление главной кнопкой
                 tg.MainButton.hide();
                 mainButtonAction = () => {};
                 if (pageId === 'edit-profile-page') {
@@ -619,7 +643,6 @@
                 tg.HapticFeedback.notificationOccurred('success');
             }
 
-            // ДОБАВЛЕНО: Функция "Поделиться профилем"
             function handleShareProfile(profile) {
                 const shareText = `Подписывайся на @${profile.username} в Guid!`;
                 const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=user${profile.id}`;
@@ -800,6 +823,8 @@
                 }
                 tg.MainButton.showProgress();
                 const description = document.getElementById('video-description').value.trim();
+                const discipline = document.getElementById('video-discipline').value;
+                const style = document.getElementById('video-style').value;
                 
                 const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
                 
@@ -820,7 +845,9 @@
                 const { error: dbError } = await supabase.from('videos').insert({
                     user_id: user.id,
                     description: description,
-                    video_url: publicUrlData.publicUrl
+                    video_url: publicUrlData.publicUrl,
+                    discipline: discipline,
+                    style: style
                 });
 
                 tg.MainButton.hideProgress();
@@ -885,12 +912,8 @@
             async function populateDiscoverPage() {
                 const discoverContent = document.getElementById('discover-content');
                 discoverContent.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
-                if (videos.length > 0) {
-                    renderGridContent('discover-content', videos);
-                } else {
-                    const fetchedVideos = await fetchVideos();
-                    renderGridContent('discover-content', fetchedVideos);
-                }
+                const allVideos = await fetchVideos();
+                renderGridContent('discover-content', allVideos);
             }
 
             async function populateInbox() {
@@ -911,7 +934,7 @@
             tg.BackButton.onClick(() => {
                 const activePageId = document.querySelector('.page.active').id;
                 
-                if (activePageId === 'create-page' || activePageId === 'user-profile-page' || activePageId === 'discover-page' || activePageId === 'inbox-page') {
+                if (['create-page', 'user-profile-page', 'discover-page', 'inbox-page', 'video-viewer-page'].includes(activePageId)) {
                     navigateToPage('home-page');
                 } else if (activePageId === 'edit-profile-page') {
                     navigateToPage('profile-page');
@@ -946,13 +969,18 @@
             document.getElementById('comment-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') postComment(); });
             
             async function main(forceRefresh = false) {
-                await upsertUserProfile();
-                if (forceRefresh || videos.length === 0) {
-                    videos = await fetchVideos();
+                userProfile = await upsertUserProfile();
+
+                if (!userProfile.discipline) {
+                    startOnboarding();
+                } else {
+                    if (forceRefresh || videos.length === 0) {
+                        videos = await fetchVideos();
+                    }
+                    renderVideoFeed();
+                    populateProfile(user.id);
+                    isInitialized = true;
                 }
-                renderVideoFeed();
-                populateProfile(user.id);
-                isInitialized = true;
             }
 
             main();
@@ -975,4 +1003,4 @@
         });
     </script>
 </body>
-</ht
+</html>
