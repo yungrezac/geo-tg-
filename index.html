@@ -46,10 +46,9 @@
         .action-button:active .action-icon { transform: scale(0.9); }
         .action-count { font-size: 13px; font-weight: 500; }
         
-        /* ДОБАВЛЕНО: Стили для кнопки звука */
         .mute-button {
             position: absolute;
-            top: 75px;
+            top: 66px;
             right: 15px;
             z-index: 11;
             color: #fff;
@@ -107,7 +106,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         
         #discover-page, #create-page, #inbox-page, #profile-page, #user-profile-page, #edit-profile-page {
-             padding-top: 65px;
+             padding-top: 40px;
         }
 
         .comments-panel {
@@ -198,6 +197,7 @@
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
+            tg.disableVerticalSwipes();
 
             const SUPABASE_URL = 'https://bbtkaiondhlxaxvcvces.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidGthaW9uZGhseGF4dmN2Y2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NDcyNDUsImV4cCI6MjA2OTMyMzI0NX0.yE-IT4RJoJQC8hAtSCgh9Nh4fX-cADts-DDxuOnVloY';
@@ -281,7 +281,6 @@
                 videoWrapper.className = `video-wrapper ${classNames}`;
                 videoWrapper.dataset.videoId = videoData.id;
 
-                // ДОБАВЛЕНО: Кнопка звука в HTML
                 videoWrapper.innerHTML = `
                     <video class="video-player" src="${videoData.url}" loop playsinline></video>
                     <div class="mute-button"><i class="fas fa-volume-high"></i></div>
@@ -309,7 +308,6 @@
                 const videoPlayer = videoWrapper.querySelector('.video-player');
                 const muteButton = videoWrapper.querySelector('.mute-button');
 
-                // ДОБАВЛЕНО: Обработчик клика для кнопки звука
                 muteButton.addEventListener('click', (e) => {
                     e.stopPropagation();
                     videoPlayer.muted = !videoPlayer.muted;
@@ -364,7 +362,6 @@
                 playCurrentVideo();
             }
 
-            // ИЗМЕНЕНО: Обновлена логика для сброса состояния звука при смене видео
             function playCurrentVideo() {
                 document.querySelectorAll('.video-player').forEach(v => {
                     v.pause();
@@ -378,7 +375,6 @@
                 const muteButtonIcon = activeVideoWrapper.querySelector('.mute-button i');
 
                 if (activeVideo) {
-                    // Сбрасываем видео в начало и включаем звук по умолчанию
                     activeVideo.currentTime = 0;
                     activeVideo.muted = false;
                     if (muteButtonIcon) muteButtonIcon.className = 'fas fa-volume-high';
@@ -389,7 +385,6 @@
                     if (playPromise !== undefined) {
                         playPromise.catch(error => {
                             console.error("Autoplay with sound failed, trying muted:", error);
-                            // Если автозапуск со звуком не удался, пробуем без звука
                             activeVideo.muted = true;
                             if (muteButtonIcon) muteButtonIcon.className = 'fas fa-volume-mute';
                             activeVideo.play();
@@ -401,7 +396,7 @@
                     };
                 }
             }
-
+            
             function navigateVideo(direction) {
                 if (isSwiping || videos.length <= 1) return;
                 isSwiping = true;
@@ -869,8 +864,18 @@
             });
             
             let touchStartY = 0;
-            document.getElementById('home-page').addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
-            document.getElementById('home-page').addEventListener('touchend', (e) => { const dY = e.changedTouches[0].clientY - touchStartY; if (Math.abs(dY) > 50) navigateVideo(dY > 0 ? -1 : 1); }, { passive: true });
+            const homePage = document.getElementById('home-page');
+
+            homePage.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            homePage.addEventListener('touchend', (e) => {
+                const dY = e.changedTouches[0].clientY - touchStartY;
+                if (Math.abs(dY) > 50) {
+                    navigateVideo(dY > 0 ? -1 : 1);
+                }
+            }, { passive: true });
             
             document.querySelector('.search-input').addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
@@ -894,6 +899,22 @@
             }
 
             main();
+
+            setInterval(() => {
+                const activeVideoWrapper = document.querySelector('.video-wrapper.active');
+                if (!activeVideoWrapper) return;
+
+                const videoPlayer = activeVideoWrapper.querySelector('.video-player');
+                
+                if (videoPlayer && videoPlayer.muted) {
+                    videoPlayer.muted = false;
+                    
+                    const muteButton = activeVideoWrapper.querySelector('.mute-button');
+                    if (muteButton) {
+                         muteButton.querySelector('i').className = 'fas fa-volume-high';
+                    }
+                }
+            }, 500); 
         });
     </script>
 </body>
