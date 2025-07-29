@@ -15,7 +15,7 @@
             --tg-link: var(--tg-theme-link-color, #1c9eff);
             --tg-button: var(--tg-theme-button-color, #1c9eff);
             --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
-            --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #111111);
+            --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #1c1c1e);
             --accent-red: #ff3b30;
             --border-radius: 12px;
         }
@@ -59,7 +59,7 @@
         .stat-value { font-size: 18px; font-weight: bold; }
         .stat-label { font-size: 12px; color: var(--tg-hint); }
         .profile-actions { display: flex; gap: 10px; width: 100%; padding: 0 15px; margin-bottom: 20px; }
-        .profile-button { flex: 1; padding: 12px; border-radius: var(--border-radius); font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; transition: opacity 0.2s ease; }
+        .profile-button { flex: 1; padding: 12px; border-radius: var(--border-radius); font-size: 14px; font-weight: bold; text-align: center; cursor: pointer; transition: background-color 0.2s ease, opacity 0.2s ease; }
         .profile-button:active { opacity: 0.8; }
         .profile-button-primary { background-color: var(--tg-button); color: var(--tg-button-text); }
         .profile-button-secondary { background-color: var(--tg-secondary-bg); color: var(--tg-text); }
@@ -99,15 +99,147 @@
         #upload-progress { width: 100%; height: 5px; background-color: var(--tg-secondary-bg); border-radius: 5px; margin-top: 10px; display: none; }
         #upload-progress-bar { width: 0; height: 100%; background-color: var(--tg-link); border-radius: 5px; transition: width 0.2s; }
         
-        /* Стили для анкеты */
-        .onboarding-step { display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; height: 100%; }
-        .onboarding-step.active { display: flex; }
-        .onboarding-step h2 { font-size: 24px; margin-bottom: 20px; }
-        .onboarding-options { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 300px; }
-        .onboarding-option { padding: 15px; background-color: var(--tg-secondary-bg); border-radius: var(--border-radius); cursor: pointer; }
-        #city-list { max-height: 300px; overflow-y: auto; text-align: left; border: 1px solid var(--tg-secondary-bg); border-radius: var(--border-radius); }
-        .city-item { padding: 10px 15px; cursor: pointer; }
-        .city-item:hover { background-color: var(--tg-hint); }
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ОНБОРДИНГА --- */
+        #onboarding-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .onboarding-container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            max-width: 500px;
+        }
+        .onboarding-progress {
+            display: flex;
+            gap: 5px;
+            width: 100%;
+            margin-bottom: 30px;
+            flex-shrink: 0;
+        }
+        .progress-step {
+            flex: 1;
+            height: 4px;
+            background-color: var(--tg-secondary-bg);
+            border-radius: 2px;
+            transition: background-color 0.3s ease;
+        }
+        .progress-step.active {
+            background-color: var(--tg-link);
+        }
+        .onboarding-step {
+            display: none;
+            flex-direction: column;
+            text-align: center;
+            flex-grow: 1;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .onboarding-step.active {
+            display: flex;
+            opacity: 1;
+        }
+        .onboarding-step h2 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .onboarding-step p {
+            font-size: 16px;
+            color: var(--tg-hint);
+            margin-bottom: 30px;
+        }
+        .onboarding-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .onboarding-option {
+            padding: 20px;
+            background-color: var(--tg-secondary-bg);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-align: left;
+            font-size: 17px;
+            font-weight: 500;
+        }
+        .onboarding-option .option-icon {
+            font-size: 24px;
+            color: var(--tg-hint);
+            width: 30px;
+            text-align: center;
+            transition: color 0.2s ease;
+        }
+        .onboarding-option:hover {
+            border-color: var(--tg-hint);
+        }
+        .onboarding-option.selected {
+            border-color: var(--tg-link);
+            background-color: color-mix(in srgb, var(--tg-link) 15%, var(--tg-secondary-bg));
+        }
+        .onboarding-option.selected .option-icon {
+            color: var(--tg-link);
+        }
+        #city-list {
+            max-height: 40vh;
+            overflow-y: auto;
+            border: 1px solid var(--tg-secondary-bg);
+            border-radius: var(--border-radius);
+            padding: 5px;
+        }
+        .city-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+        .city-item:hover, .city-item.selected {
+            background-color: var(--tg-secondary-bg);
+        }
+        .onboarding-nav {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            margin-top: auto;
+            padding-top: 15px;
+            flex-shrink: 0;
+        }
+        .onboarding-button {
+            flex: 1;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .onboarding-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .onboarding-button-next {
+            background-color: var(--tg-button);
+            color: var(--tg-button-text);
+        }
+        .onboarding-button-back {
+            background-color: var(--tg-secondary-bg);
+            color: var(--tg-text);
+        }
+        /* --- КОНЕЦ НОВЫХ СТИЛЕЙ --- */
 
         /* Стили для фильтров */
         .filters-container { display: flex; gap: 10px; padding: 10px 15px; background-color: var(--tg-bg); }
@@ -170,24 +302,49 @@
     <div id="user-profile-page" class="page"></div>
     <!-- Новая страница для просмотра одного видео -->
     <div id="video-viewer-page" class="page"></div>
-    <!-- Новая страница для анкеты -->
+    
+    <!-- ОБНОВЛЕННАЯ СТРАНИЦА АНКЕТЫ -->
     <div id="onboarding-page" class="page">
-        <div id="onboarding-step-1" class="onboarding-step active">
-            <h2>Чем ты занимаешься?</h2>
-            <div class="onboarding-options">
-                <div class="onboarding-option" data-discipline="Ролики">Ролики</div>
-                <div class="onboarding-option" data-discipline="Скейт">Скейт</div>
-                <div class="onboarding-option" data-discipline="BMX">BMX</div>
+        <div class="onboarding-container">
+            <div class="onboarding-progress">
+                <div class="progress-step"></div>
+                <div class="progress-step"></div>
+                <div class="progress-step"></div>
             </div>
-        </div>
-        <div id="onboarding-step-2" class="onboarding-step">
-            <h2>Выбери свой стиль</h2>
-            <div id="style-options" class="onboarding-options"></div>
-        </div>
-        <div id="onboarding-step-3" class="onboarding-step">
-            <h2>Из какого ты города?</h2>
-            <input type="text" id="city-search" class="search-input" placeholder="Поиск города..." style="margin-bottom: 15px;">
-            <div id="city-list" class="onboarding-options"></div>
+
+            <div id="onboarding-step-1" class="onboarding-step">
+                <h2>Расскажите о себе</h2>
+                <p>Выберите основную дисциплину, которой вы занимаетесь.</p>
+                <div class="onboarding-options">
+                    <div class="onboarding-option" data-discipline="Ролики"><i class="option-icon fas fa-skating"></i>Ролики</div>
+                    <div class="onboarding-option" data-discipline="Скейт"><i class="option-icon fas fa-skateboard"></i>Скейтборд</div>
+                    <div class="onboarding-option" data-discipline="BMX"><i class="option-icon fas fa-bicycle"></i>BMX</div>
+                </div>
+                <div class="onboarding-nav">
+                    <button class="onboarding-button onboarding-button-next" id="ob-step1-next" disabled>Далее</button>
+                </div>
+            </div>
+
+            <div id="onboarding-step-2" class="onboarding-step">
+                <h2>Какой ваш стиль?</h2>
+                <p>Это поможет нам рекомендовать вам интересный контент.</p>
+                <div id="style-options" class="onboarding-options"></div>
+                <div class="onboarding-nav">
+                    <button class="onboarding-button onboarding-button-back" id="ob-step2-back">Назад</button>
+                    <button class="onboarding-button onboarding-button-next" id="ob-step2-next" disabled>Далее</button>
+                </div>
+            </div>
+
+            <div id="onboarding-step-3" class="onboarding-step">
+                <h2>Из какого вы города?</h2>
+                <p>Найдите райдеров и споты рядом с вами.</p>
+                <input type="text" id="city-search" class="search-input" placeholder="Начните вводить город..." style="margin-bottom: 15px; width: 100%;">
+                <div id="city-list" class="onboarding-options"></div>
+                 <div class="onboarding-nav">
+                    <button class="onboarding-button onboarding-button-back" id="ob-step3-back">Назад</button>
+                    <button class="onboarding-button onboarding-button-next" id="ob-step3-finish" disabled>Завершить</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -233,6 +390,7 @@
             let selectedFile = null;
             let isInitialized = false;
             let userProfile = null;
+            let onboardingData = {};
 
             let mainButtonAction = () => {};
             const mainButtonClickHandler = () => {
@@ -248,7 +406,7 @@
                 'Скейт': ['Стрит', 'Парк', 'Верт', 'Лонгборд', 'Круизинг', 'Даунхилл'],
                 'BMX': ['Стрит', 'Парк', 'Дерт', 'Верт', 'Флэтленд', 'Рейсинг']
             };
-            // Этот список городов нужно будет значительно расширить
+            // Этот список городов нужно будет значительно расширить или заменить на API
             const cities = ['Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону', 'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград', 'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'];
 
             async function upsertUserProfile() {
@@ -643,6 +801,7 @@
             
             function handleShare(videoData) {
                 const shareText = `Смотри крутое видео от @${videoData.username} в Guid!`;
+                // ЗАМЕНИТЕ YOUR_BOT_USERNAME и YOUR_APP_NAME на свои значения
                 const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=video${videoData.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
@@ -653,6 +812,7 @@
 
             function handleShareProfile(profile) {
                 const shareText = `Подписывайся на @${profile.username} в Guid!`;
+                 // ЗАМЕНИТЕ YOUR_BOT_USERNAME и YOUR_APP_NAME на свои значения
                 const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=user${profile.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
@@ -985,20 +1145,65 @@
                     if (forceRefresh || videos.length === 0) {
                         videos = await fetchVideos();
                     }
+                    navigateToPage('home-page');
                     renderVideoFeed();
                     populateProfile(user.id);
                     isInitialized = true;
                 }
             }
 
-            // --- НОВАЯ ЛОГИКА АНКЕТЫ ---
+            // --- ОБНОВЛЕННАЯ ЛОГИКА ОНБОРДИНГА ---
+            
+            let currentOnboardingStep = 1;
+
+            function showOnboardingStep(step) {
+                currentOnboardingStep = step;
+                document.querySelectorAll('.onboarding-step').forEach(s => s.classList.remove('active'));
+                document.querySelector(`#onboarding-step-${step}`).classList.add('active');
+
+                document.querySelectorAll('.progress-step').forEach((p, index) => {
+                    p.classList.toggle('active', index < step);
+                });
+                tg.HapticFeedback.impactOccurred('light');
+            }
+
             function startOnboarding() {
                 navigateToPage('onboarding-page');
+                showOnboardingStep(1);
+            }
+
+            function setupOnboardingListeners() {
+                // Step 1: Discipline selection
+                document.querySelectorAll('#onboarding-step-1 .onboarding-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        document.querySelectorAll('#onboarding-step-1 .onboarding-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        onboardingData.discipline = option.dataset.discipline;
+                        document.getElementById('ob-step1-next').disabled = false;
+                    });
+                });
+
+                document.getElementById('ob-step1-next').addEventListener('click', () => {
+                    populateStyleOptions(onboardingData.discipline);
+                    showOnboardingStep(2);
+                });
+
+                // Step 2: Style selection
+                document.getElementById('ob-step2-back').addEventListener('click', () => showOnboardingStep(1));
+                document.getElementById('ob-step2-next').addEventListener('click', () => {
+                    populateCityList();
+                    showOnboardingStep(3);
+                });
+
+                // Step 3: City selection
+                document.getElementById('ob-step3-back').addEventListener('click', () => showOnboardingStep(2));
+                document.getElementById('city-search').addEventListener('input', (e) => populateCityList(e.target.value));
+                document.getElementById('ob-step3-finish').addEventListener('click', finishOnboarding);
             }
 
             function populateStyleOptions(discipline) {
-                const styleOptionsContainer = document.getElementById('style-options');
-                styleOptionsContainer.innerHTML = '';
+                const container = document.getElementById('style-options');
+                container.innerHTML = '';
                 const styles = disciplines[discipline] || [];
                 styles.forEach(style => {
                     const option = document.createElement('div');
@@ -1006,63 +1211,67 @@
                     option.textContent = style;
                     option.dataset.style = style;
                     option.addEventListener('click', () => {
-                        userProfile.style = style;
-                        document.getElementById('onboarding-step-2').classList.remove('active');
-                        populateCityList();
-                        document.getElementById('onboarding-step-3').classList.add('active');
+                        container.querySelectorAll('.onboarding-option').forEach(o => o.classList.remove('selected'));
+                        option.classList.add('selected');
+                        onboardingData.style = style;
+                        document.getElementById('ob-step2-next').disabled = false;
                     });
-                    styleOptionsContainer.appendChild(option);
+                    container.appendChild(option);
                 });
+                // Сброс выбора, если пользователь вернулся назад и изменил дисциплину
+                onboardingData.style = null;
+                document.getElementById('ob-step2-next').disabled = true;
             }
 
             function populateCityList(filter = '') {
-                const cityListContainer = document.getElementById('city-list');
-                cityListContainer.innerHTML = '';
+                const container = document.getElementById('city-list');
+                container.innerHTML = '';
                 const filteredCities = cities.filter(city => city.toLowerCase().includes(filter.toLowerCase()));
 
                 filteredCities.forEach(city => {
                     const item = document.createElement('div');
                     item.className = 'city-item';
                     item.textContent = city;
-                    item.addEventListener('click', async () => {
-                        userProfile.city = city;
-                        const { error } = await supabase.from('profiles').update({
-                            discipline: userProfile.discipline,
-                            style: userProfile.style,
-                            city: userProfile.city
-                        }).eq('id', user.id);
-
-                        if (error) {
-                            console.error('Error saving onboarding data:', error);
-                            tg.showAlert('Не удалось сохранить данные. Попробуйте снова.');
-                            tg.HapticFeedback.notificationOccurred('error');
-                        } else {
-                            tg.HapticFeedback.notificationOccurred('success');
-                            await main(true);
-                            navigateToPage('home-page');
-                        }
+                    item.addEventListener('click', () => {
+                        container.querySelectorAll('.city-item').forEach(i => i.classList.remove('selected'));
+                        item.classList.add('selected');
+                        onboardingData.city = city;
+                        document.getElementById('ob-step3-finish').disabled = false;
                     });
-                    cityListContainer.appendChild(item);
+                    container.appendChild(item);
                 });
+                 // Сброс выбора
+                onboardingData.city = null;
+                document.getElementById('ob-step3-finish').disabled = true;
+            }
+            
+            async function finishOnboarding() {
+                tg.MainButton.showProgress();
+                const { error } = await supabase.from('profiles').update({
+                    discipline: onboardingData.discipline,
+                    style: onboardingData.style,
+                    city: onboardingData.city
+                }).eq('id', user.id);
+
+                tg.MainButton.hideProgress();
+
+                if (error) {
+                    console.error('Error saving onboarding data:', error);
+                    tg.showAlert('Не удалось сохранить данные. Попробуйте снова.');
+                    tg.HapticFeedback.notificationOccurred('error');
+                } else {
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showAlert('Добро пожаловать!');
+                    await main(true); // Перезагружаем данные и переходим на главную
+                }
             }
 
-            document.querySelectorAll('#onboarding-step-1 .onboarding-option').forEach(option => {
-                option.addEventListener('click', () => {
-                    const discipline = option.dataset.discipline;
-                    userProfile.discipline = discipline;
-                    document.getElementById('onboarding-step-1').classList.remove('active');
-                    populateStyleOptions(discipline);
-                    document.getElementById('onboarding-step-2').classList.add('active');
-                });
-            });
+            // --- КОНЕЦ ЛОГИКИ ОНБОРДИНГА ---
 
-            document.getElementById('city-search').addEventListener('input', (e) => {
-                populateCityList(e.target.value);
-            });
-            // --- КОНЕЦ ЛОГИКИ АНКЕТЫ ---
-
+            setupOnboardingListeners();
             main();
 
+            // Периодическая проверка для включения звука, если он был отключен браузером
             setInterval(() => {
                 const activeVideoWrapper = document.querySelector('.video-wrapper.active');
                 if (!activeVideoWrapper) return;
