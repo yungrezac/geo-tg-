@@ -69,7 +69,7 @@
         .content-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; }
         .grid-item { aspect-ratio: 9/16; background-color: var(--tg-secondary-bg); position: relative; cursor: pointer; }
         .grid-item-thumbnail { width: 100%; height: 100%; object-fit: cover; }
-        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; text-align: center; padding: 20px; color: var(--tg-hint); }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 40vh; text-align: center; padding: 20px; color: var(--tg-hint); }
         .empty-state-icon { font-size: 50px; margin-bottom: 20px; }
         .empty-state-text { font-size: 16px; margin-bottom: 15px; }
         .create-options { padding: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
@@ -92,27 +92,16 @@
         .spinner { width: 40px; height: 40px; border: 4px solid var(--tg-secondary-bg); border-radius: 50%; border-top-color: var(--tg-link); animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* == НОВЫЕ И ИЗМЕНЕННЫЕ СТИЛИ == */
-        
-        /* 1. Отступ 40px для fullsize-режима на указанных страницах */
         #discover-page, #create-page, #inbox-page, #profile-page, #user-profile-page, #edit-profile-page {
-            padding-top: 66px;
+             padding-top: 40px;
         }
 
-        /* 2. Стили для панели комментариев, высота изменена на 80vh */
         .comments-panel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 80vh; /* ИЗМЕНЕНО: высота увеличена до 80% экрана */
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 80vh; 
             background-color: var(--tg-secondary-bg);
             border-radius: var(--border-radius) var(--border-radius) 0 0;
-            transform: translateY(100%);
-            transition: transform 0.3s ease-out;
-            z-index: 200;
-            display: flex;
-            flex-direction: column;
+            transform: translateY(100%); transition: transform 0.3s ease-out;
+            z-index: 200; display: flex; flex-direction: column;
         }
         .comments-panel.open { transform: translateY(0); }
         .comments-header { padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid var(--tg-hint); position: relative; flex-shrink: 0; }
@@ -126,7 +115,6 @@
         .comment-input { flex-grow: 1; background-color: var(--tg-bg); border: none; padding: 10px; border-radius: var(--border-radius); color: var(--tg-text); }
         .comment-send-btn { background: none; border: none; color: var(--tg-link); font-size: 24px; margin-left: 10px; cursor: pointer; }
         
-        /* Стили для формы загрузки */
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; color: var(--tg-hint); font-size: 14px; }
         .form-group input, .form-group textarea { width: 100%; padding: 12px; border-radius: var(--border-radius); border: 1px solid var(--tg-secondary-bg); background-color: var(--tg-secondary-bg); color: var(--tg-text); font-size: 16px; }
@@ -135,6 +123,7 @@
     </style>
 </head>
 <body>
+    <!-- Pages -->
     <div id="home-page" class="page active"><div class="video-container" id="video-container"><div class="loading-indicator"><div class="spinner"></div></div></div></div>
     <div id="discover-page" class="page"><div class="search-bar"><input type="text" class="search-input" placeholder="Поиск видео и пользователей"></div><div id="discover-content" class="content-grid"></div><div id="discover-empty" class="empty-state" style="display: none;"><div class="empty-state-icon"><i class="fas fa-search"></i></div><div class="empty-state-text">Ничего не найдено</div></div></div>
     
@@ -150,7 +139,6 @@
             <div class="profile-button profile-button-primary" id="publish-video-btn">Опубликовать</div>
             <div id="upload-progress"><div id="upload-progress-bar"></div></div>
         </div>
-        <div class="create-options" style="display: none;"></div>
     </div>
 
     <div id="inbox-page" class="page"><div class="header">Входящие</div><div id="inbox-content"><div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Здесь будут ваши чаты</div></div></div></div>
@@ -175,6 +163,7 @@
     </div>
     <div id="user-profile-page" class="page"></div>
 
+    <!-- Comments Panel -->
     <div id="comments-panel" class="comments-panel">
         <div class="comments-header">
             <span id="comments-count">0 комментариев</span>
@@ -187,6 +176,7 @@
         </div>
     </div>
     
+    <!-- Bottom Navigation -->
     <div class="bottom-nav"><div class="nav-button active" data-page="home-page"><div class="nav-icon"><i class="fas fa-home"></i></div><div>Главная</div></div><div class="nav-button" data-page="discover-page"><div class="nav-icon"><i class="fas fa-search"></i></div><div>Интересное</div></div><div class="nav-button create-nav-button" data-page="create-page"><i class="fas fa-plus"></i></div><div class="nav-button" data-page="inbox-page"><div class="nav-icon"><i class="far fa-paper-plane"></i></div><div>Входящие</div></div><div class="nav-button" data-page="profile-page"><div class="nav-icon"><i class="far fa-user"></i></div><div>Профиль</div></div></div>
     
     <script>
@@ -213,6 +203,7 @@
             let isSwiping = false;
             let activeCommentsVideoId = null;
             let selectedFile = null;
+            let isInitialized = false;
 
             // ===================================================================
             // 3. Функции для работы с API Supabase
@@ -257,20 +248,25 @@
             }
             
             async function fetchProfileStats(userId) {
-                const { data: following, error: followingError } = await supabase.from('followers').select('followed_id').eq('follower_id', userId);
-                const { data: followers, error: followersError } = await supabase.from('followers').select('follower_id').eq('followed_id', userId);
-                const { data: userVideos, error: videosError } = await supabase.from('videos').select('likes(count)').eq('user_id', userId);
-
+                const { data: following, error: followingError } = await supabase.from('followers').select('followed_id', { count: 'exact' }).eq('follower_id', userId);
+                const { data: followers, error: followersError } = await supabase.from('followers').select('follower_id', { count: 'exact' }).eq('followed_id', userId);
+                const { data: userVideos, error: videosError } = await supabase.from('videos').select('id').eq('user_id', userId);
+                
                 if (followingError || followersError || videosError) {
                     console.error('Error fetching stats', followingError, followersError, videosError);
                     return { following: 0, followers: 0, likes: 0 };
                 }
 
-                const totalLikes = userVideos.reduce((acc, video) => acc + (video.likes[0]?.count || 0), 0);
+                const videoIds = userVideos.map(v => v.id);
+                let totalLikes = 0;
+                if (videoIds.length > 0) {
+                    const { count, error: likesError } = await supabase.from('likes').select('*', { count: 'exact', head: true }).in('video_id', videoIds);
+                    if (!likesError) totalLikes = count;
+                }
                 
                 return {
-                    following: following.length,
-                    followers: followers.length,
+                    following: (await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', userId)).count || 0,
+                    followers: (await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('followed_id', userId)).count || 0,
                     likes: totalLikes
                 };
             }
@@ -294,7 +290,7 @@
                     </div>
                     <div class="right-sidebar">
                         <div class="avatar" data-user-id="${videoData.userId}">${videoData.username.charAt(0).toUpperCase()}
-                           </div>
+                            </div>
                         <div class="action-button like-btn">
                             <i class="action-icon ${videoData.isLiked ? 'fas liked' : 'far'} fa-heart"></i>
                             <div class="action-count">${videoData.likesCount}</div>
@@ -385,7 +381,7 @@
             function renderGridContent(containerId, data, emptyText = "Здесь пока пусто") {
                 const grid = document.getElementById(containerId);
                 grid.innerHTML = '';
-                if (data.length === 0) {
+                if (!data || data.length === 0) {
                     grid.innerHTML = `<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-state-icon"><i class="fas fa-video-slash"></i></div><div class="empty-state-text">${emptyText}</div></div>`;
                     return;
                 }
@@ -431,22 +427,27 @@
                     actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic">Изменить профиль</div>`;
                     page.querySelector('#edit-profile-btn-dynamic').addEventListener('click', openEditProfile);
                 } else {
-                    const { data: isFollowing } = await supabase.from('followers').select().eq('follower_id', user.id).eq('followed_id', profileId);
-                    if (isFollowing.length > 0) {
-                        actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="unfollow-btn">Отписаться</div>`;
-                        page.querySelector('#unfollow-btn').addEventListener('click', () => handleFollow(profileId, false));
-                    } else {
-                        actionsContainer.innerHTML = `<div class="profile-button profile-button-primary" id="follow-btn">Подписаться</div>`;
-                        page.querySelector('#follow-btn').addEventListener('click', () => handleFollow(profileId, true));
-                    }
+                    updateProfileFollowButton(page, profileId);
                 }
                 
                 page.querySelector(`#${pageId}-tabs`).addEventListener('click', (e) => handleTabClick(e, profileId, pageId));
                 
-                const userVideos = await fetchUserVideos(profileId);
-                renderGridContent(`${pageId}-content-grid`, userVideos);
+                // Load initial tab content
+                handleTabClick({ target: page.querySelector('.tab.active') }, profileId, pageId);
             }
 
+            async function updateProfileFollowButton(page, profileId) {
+                const actionsContainer = page.querySelector('.profile-actions');
+                const { data: isFollowing } = await supabase.from('followers').select().eq('follower_id', user.id).eq('followed_id', profileId);
+                if (isFollowing.length > 0) {
+                    actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="profile-follow-btn">Отписаться</div>`;
+                    page.querySelector('#profile-follow-btn').addEventListener('click', () => handleFollow(profileId, false, page));
+                } else {
+                    actionsContainer.innerHTML = `<div class="profile-button profile-button-primary" id="profile-follow-btn">Подписаться</div>`;
+                    page.querySelector('#profile-follow-btn').addEventListener('click', () => handleFollow(profileId, true, page));
+                }
+            }
+            
             function navigateToPage(pageId) {
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
@@ -454,7 +455,10 @@
                 const navButton = document.querySelector(`.nav-button[data-page="${pageId}"]`);
                 if (navButton) navButton.classList.add('active');
                 
-                if (pageId === 'home-page') { 
+                const activePage = document.querySelector('.page.active');
+                const isHomePage = activePage.id === 'home-page';
+
+                if (isHomePage) { 
                     tg.BackButton.hide(); 
                     playCurrentVideo(); 
                 } else { 
@@ -463,8 +467,9 @@
                 }
                 
                 if (pageId === 'discover-page' && document.getElementById('discover-content').innerHTML === '') populateDiscoverPage();
-                if (pageId === 'profile-page') populateProfile(user.id);
-                
+                if (pageId === 'profile-page' && (!isInitialized || activePage.innerHTML.trim() === '')) populateProfile(user.id);
+                if (pageId === 'inbox-page' && document.getElementById('inbox-content').querySelector('.empty-state')) populateInbox();
+
                 tg.HapticFeedback.impactOccurred('light');
             }
             
@@ -477,7 +482,10 @@
                 }
             }
 
-            // ... Остальные функции (handleLike, handleSave и т.д.) остаются без изменений ...
+            // ===================================================================
+            // 5. Функции-обработчики действий пользователя
+            // ===================================================================
+
             async function handleLike(videoWrapper, videoData, fromDoubleTap = false) {
                 if (fromDoubleTap && videoData.isLiked) return;
                 videoData.isLiked = !videoData.isLiked;
@@ -529,7 +537,7 @@
                 list.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
                 panel.classList.add('open');
                 const { data, error, count } = await supabase.from('comments')
-                    .select('*, profiles(username)', { count: 'exact' })
+                    .select('*, profiles(username, first_name, last_name)', { count: 'exact' })
                     .eq('video_id', videoId)
                     .order('created_at', { ascending: true });
                 if (error) {
@@ -594,18 +602,30 @@
                     }
                 }
             }
-            async function handleFollow(followedId, follow = true) {
-                if (follow) {
-                    const { error } = await supabase.from('followers').insert({ follower_id: user.id, followed_id: followedId });
-                    if (error) console.error("Follow error", error);
-                } else {
-                    const { error } = await supabase.from('followers').delete().match({ follower_id: user.id, followed_id: followedId });
-                    if (error) console.error("Unfollow error", error);
+            async function handleFollow(followedId, follow = true, profilePage = null) {
+                const action = follow ? 
+                    supabase.from('followers').insert({ follower_id: user.id, followed_id: followedId }) :
+                    supabase.from('followers').delete().match({ follower_id: user.id, followed_id: followedId });
+
+                const { error } = await action;
+                if (error) {
+                    console.error("Follow/Unfollow error", error);
+                    tg.showAlert('Действие не удалось. Попробуйте снова.');
+                    return;
                 }
-                await populateProfile(followedId); // Refresh profile UI
+
+                // Обновляем кнопку в ленте видео, если она видима
                 const activeVideoWrapper = document.querySelector('.video-wrapper.active');
-                if (activeVideoWrapper) await updateFollowButton(activeVideoWrapper, followedId);
+                if (activeVideoWrapper && activeVideoWrapper.querySelector(`[data-user-id="${followedId}"]`)) {
+                    await updateFollowButton(activeVideoWrapper, followedId);
+                }
+                
+                // Обновляем кнопку на странице профиля, если мы на ней
+                if (profilePage) {
+                    await updateProfileFollowButton(profilePage, followedId);
+                }
             }
+
             async function updateFollowButton(videoWrapper, authorId) {
                 const avatarDiv = videoWrapper.querySelector('.avatar');
                 const existingBtn = avatarDiv.querySelector('.follow-button');
@@ -620,23 +640,58 @@
                     avatarDiv.appendChild(followBtn);
                 }
             }
+            
+            async function handleTabClick(e, profileId, pageId) {
+                const tab = e.target.closest('.tab');
+                if (!tab) return;
+                
+                document.querySelectorAll(`#${pageId}-tabs .tab`).forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                const content = tab.dataset.content;
+                const gridId = `${pageId}-content-grid`;
+                const grid = document.getElementById(gridId);
+                grid.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
+                
+                let videosToShow = [];
+                let emptyText = "Здесь пока пусто";
+
+                if (content === 'my-videos') {
+                    const { data } = await supabase.from('videos').select(`...videos(*)`).eq('user_id', profileId).order('created_at', { ascending: false });
+                    videosToShow = data ? data.map(v => v.videos) : [];
+                    emptyText = "Вы еще не загрузили ни одного видео.";
+                } else if (content === 'liked-videos') {
+                    const { data } = await supabase.from('likes').select(`videos(*, profiles(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
+                    videosToShow = data ? data.map(v => v.videos) : [];
+                    emptyText = "Вам еще не понравилось ни одно видео.";
+                } else if (content === 'saved-videos') {
+                    const { data } = await supabase.from('saves').select(`videos(*, profiles(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
+                    videosToShow = data ? data.map(v => v.videos) : [];
+                    emptyText = "Вы еще ничего не сохранили.";
+                }
+                
+                // Приводим данные к единому формату
+                const formattedVideos = videosToShow.filter(Boolean).map(v => ({
+                    id: v.id, url: v.video_url, description: v.description, userId: v.user_id,
+                    username: v.profiles?.username || '...',
+                }));
+
+                renderGridContent(gridId, formattedVideos, emptyText);
+            }
+
             // ===================================================================
-            // 6. ИЗМЕНЕННАЯ Логика загрузки видео
+            // 6. Логика загрузки, редактирования и других страниц
             // ===================================================================
             
-            // Listener для скрытого input'а
             document.getElementById('video-file-input').addEventListener('change', (event) => {
                 selectedFile = event.target.files[0];
                 if (selectedFile) {
-                    // После выбора файла переходим на страницу создания и показываем форму
                     navigateToPage('create-page');
-                    document.querySelector('#create-page .upload-form').style.display = 'block';
+                    document.querySelector('#create-page #upload-form').style.display = 'block';
                 }
-                // Сбрасываем значение, чтобы событие сработало снова при выборе того же файла
                 event.target.value = null; 
             });
 
-            // Listener для кнопки публикации
             document.getElementById('publish-video-btn').addEventListener('click', async () => {
                 if (!selectedFile) {
                     tg.showAlert('Пожалуйста, выберите файл для загрузки.');
@@ -647,6 +702,13 @@
                 const progressContainer = document.getElementById('upload-progress');
                 const progressBar = document.getElementById('upload-progress-bar');
                 
+                const resetBtn = () => {
+                    publishBtn.textContent = 'Опубликовать';
+                    publishBtn.style.pointerEvents = 'auto';
+                    progressContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+                };
+
                 publishBtn.textContent = 'Публикация...';
                 publishBtn.style.pointerEvents = 'none';
                 progressContainer.style.display = 'block';
@@ -655,12 +717,12 @@
                 
                 const { error: uploadError } = await supabase.storage
                     .from('videos')
-                    .upload(fileName, selectedFile); // Убрана симуляция прогресса для простоты
+                    .upload(fileName, selectedFile);
 
                 if (uploadError) {
                     console.error('Upload error:', uploadError);
                     tg.showAlert('Ошибка загрузки видео.');
-                    // (код сброса кнопки)
+                    resetBtn();
                     return;
                 }
                 
@@ -677,7 +739,7 @@
                 if (dbError) {
                     console.error('Database error:', dbError);
                     tg.showAlert('Ошибка сохранения видео.');
-                    // (код сброса кнопки)
+                    resetBtn();
                     return;
                 }
                 
@@ -687,83 +749,97 @@
                 document.getElementById('upload-form').style.display = 'none';
                 document.getElementById('video-description').value = '';
                 selectedFile = null;
-                publishBtn.textContent = 'Опубликовать';
-                publishBtn.style.pointerEvents = 'auto';
-                progressContainer.style.display = 'none';
-                progressBar.style.width = '0%';
+                resetBtn();
                 
                 // Обновляем данные и переходим на главную
-                await main(true);
+                await main(true); // forceRefresh = true
                 navigateToPage('home-page');
             });
             
-            // ... Код для редактирования профиля и вкладок ...
-             function openEditProfile() {
-                // Код для открытия страницы редактирования профиля
+            async function openEditProfile() {
+                const { data: profile, error } = await supabase.from('profiles').select().eq('id', user.id).single();
+                if (error) {
+                    tg.showAlert('Не удалось загрузить данные профиля.');
+                    return;
+                }
+                document.getElementById('edit-first-name').value = profile.first_name || '';
+                document.getElementById('edit-last-name').value = profile.last_name || '';
+                document.getElementById('edit-username').value = profile.username || '';
+                navigateToPage('edit-profile-page');
             }
+
             document.getElementById('save-profile-btn').addEventListener('click', async () => {
-                // Код сохранения профиля
+                const btn = document.getElementById('save-profile-btn');
+                btn.textContent = 'Сохранение...';
+                btn.style.pointerEvents = 'none';
+
+                const updates = {
+                    id: user.id,
+                    first_name: document.getElementById('edit-first-name').value,
+                    last_name: document.getElementById('edit-last-name').value,
+                    username: document.getElementById('edit-username').value,
+                    updated_at: new Date(),
+                };
+
+                const { error } = await supabase.from('profiles').upsert(updates);
+
+                btn.textContent = 'Сохранить';
+                btn.style.pointerEvents = 'auto';
+
+                if (error) {
+                    console.error("Profile save error:", error);
+                    tg.showAlert('Ошибка сохранения: ' + error.message);
+                } else {
+                    tg.showPopup({ title: 'Сохранено!', message: 'Ваш профиль обновлен.', buttons: [{type: 'ok'}] });
+                    await populateProfile(user.id);
+                    navigateToPage('profile-page');
+                }
             });
-            async function fetchUserVideos(profileId) {
-                // код получения видео пользователя
-                 const { data, error } = await supabase.from('videos').select(`*, profiles(*), likes(*), saves(*), comments(*)`).eq('user_id', profileId).order('created_at', { ascending: false });
-                 if (error) return [];
-                 return data.map(v => ({
-                     id: v.id, url: v.video_url, description: v.description, userId: v.user_id, username: v.profiles.username,
-                     author: v.profiles, likesCount: v.likes.length, commentsCount: v.comments.length,
-                     isLiked: v.likes.some(like => like.user_id === user.id),
-                     isSaved: v.saves.some(save => save.user_id === user.id)
-                 }));
+
+            async function populateDiscoverPage() {
+                const discoverContent = document.getElementById('discover-content');
+                discoverContent.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
+                // Для "Интересного" можно использовать те же видео, что и в основной ленте
+                if (videos.length > 0) {
+                    renderGridContent('discover-content', videos);
+                } else {
+                    const fetchedVideos = await fetchVideos();
+                    renderGridContent('discover-content', fetchedVideos);
+                }
             }
-            async function handleTabClick(e, profileId, pageId) {
-                 // код обработки кликов по табам в профиле
-                 const tab = e.target.closest('.tab');
-                 if (!tab) return;
-                 document.querySelectorAll(`#${pageId}-tabs .tab`).forEach(t => t.classList.remove('active'));
-                 tab.classList.add('active');
-                 const content = tab.dataset.content;
-                 const gridId = `${pageId}-content-grid`;
-                 let videosToShow = [];
-                 if (content === 'my-videos') { /* ... */ }
-                 else if (content === 'liked-videos') { /* ... */ }
-                 else if (content === 'saved-videos') { /* ... */ }
+
+            async function populateInbox() {
+                const inboxContent = document.getElementById('inbox-content');
+                inboxContent.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Функционал чатов находится в разработке.</div></div>`;
+                // Здесь будет логика загрузки чатов
             }
-            
+
             // ===================================================================
-            // 9. ИЗМЕНЕННАЯ Инициализация приложения
+            // 7. Инициализация приложения и обработчики событий
             // ===================================================================
             
-            // ИЗМЕНЕНО: Настройка навигации
             document.querySelectorAll('.nav-button').forEach(button => {
                 if (button.classList.contains('create-nav-button')) {
-                    // Кнопка "Создать" сразу открывает диалог выбора файла
                     button.addEventListener('click', () => {
                         document.getElementById('video-file-input').click();
                     });
                 } else {
-                    // Остальные кнопки работают как раньше
                     button.addEventListener('click', () => navigateToPage(button.dataset.page));
                 }
             });
 
-            // ИЗМЕНЕНО: Обработка кнопки "Назад" в Telegram
             tg.BackButton.onClick(() => {
                 const activePageId = document.querySelector('.page.active').id;
                 
-                if (activePageId === 'create-page') {
-                    // При выходе со страницы создания сбрасываем ее состояние
-                    document.getElementById('upload-form').style.display = 'none';
-                    document.getElementById('video-file-input').value = null;
-                    selectedFile = null;
+                if (activePageId === 'create-page' || activePageId === 'user-profile-page' || activePageId === 'discover-page' || activePageId === 'inbox-page') {
                     navigateToPage('home-page');
-                } else if (activePageId === 'user-profile-page' || activePageId === 'edit-profile-page') {
+                } else if (activePageId === 'edit-profile-page') {
                     navigateToPage('profile-page');
                 } else {
                     navigateToPage('home-page');
                 }
             });
             
-            // Остальные обработчики
             let touchStartY = 0;
             document.getElementById('home-page').addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
             document.getElementById('home-page').addEventListener('touchend', (e) => { const dY = e.changedTouches[0].clientY - touchStartY; if (Math.abs(dY) > 50) navigateVideo(dY > 0 ? -1 : 1); }, { passive: true });
@@ -786,6 +862,7 @@
                 }
                 renderVideoFeed();
                 populateProfile(user.id);
+                isInitialized = true;
             }
 
             main();
