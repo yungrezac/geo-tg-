@@ -93,7 +93,7 @@
         @keyframes spin { to { transform: rotate(360deg); } }
         
         #discover-page, #create-page, #inbox-page, #profile-page, #user-profile-page, #edit-profile-page {
-             padding-top: 66px;
+             padding-top: 40px;
         }
 
         .comments-panel {
@@ -221,11 +221,13 @@
             }
 
             async function fetchVideos() {
+                // ИСПРАВЛЕНО: Явно указана внутренняя связь (inner join) с таблицей профилей.
+                // Это гарантирует, что в ленту попадут только видео от существующих пользователей.
                 const { data, error } = await supabase
                     .from('videos')
                     .select(`
                         id, video_url, description, user_id,
-                        profiles ( id, username, first_name, last_name ),
+                        profiles!inner( id, username, first_name, last_name ),
                         likes ( user_id ),
                         saves ( user_id ),
                         comments ( id )
@@ -234,7 +236,8 @@
 
                 if (error) {
                     console.error('Error fetching videos:', error);
-                    tg.showAlert('Не удалось загрузить видео.');
+                    // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
+                    tg.showAlert(`Не удалось загрузить видео: ${error.message}`);
                     return [];
                 }
                 
@@ -657,7 +660,6 @@
                 let emptyText = "Здесь пока пусто";
 
                 if (content === 'my-videos') {
-                    // ИСПРАВЛЕНО: Корректный запрос для получения видео пользователя
                     const { data, error } = await supabase
                         .from('videos')
                         .select('*, profiles!inner(*)')
@@ -678,7 +680,6 @@
                     emptyText = "Вы еще ничего не сохранили.";
                 }
                 
-                // Приводим данные к единому формату
                 const formattedVideos = videosToShow.map(v => ({
                     id: v.id, url: v.video_url, description: v.description, userId: v.user_id,
                     username: v.profiles?.username || '...',
@@ -723,21 +724,20 @@
 
                 const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
                 
-                // ИСПРАВЛЕНО: Указан правильный бакет 'video'
                 const { error: uploadError } = await supabase.storage
                     .from('video')
                     .upload(fileName, selectedFile);
 
                 if (uploadError) {
                     console.error('Upload error:', uploadError);
-                    tg.showAlert('Ошибка загрузки видео.');
+                    // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
+                    tg.showAlert(`Ошибка загрузки: ${uploadError.message}`);
                     resetBtn();
                     return;
                 }
                 
                 progressBar.style.width = '100%'; 
 
-                // ИСПРАВЛЕНО: Указан правильный бакет 'video'
                 const { data: publicUrlData } = supabase.storage.from('video').getPublicUrl(fileName);
                 
                 const { error: dbError } = await supabase.from('videos').insert({
@@ -748,20 +748,19 @@
 
                 if (dbError) {
                     console.error('Database error:', dbError);
-                    tg.showAlert('Ошибка сохранения видео.');
+                     // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
+                    tg.showAlert(`Ошибка сохранения в БД: ${dbError.message}`);
                     resetBtn();
                     return;
                 }
                 
                 tg.showPopup({ title: 'Успех!', message: 'Ваше видео опубликовано.', buttons: [{type: 'ok'}] });
                 
-                // Сброс формы и состояния
                 document.getElementById('upload-form').style.display = 'none';
                 document.getElementById('video-description').value = '';
                 selectedFile = null;
                 resetBtn();
                 
-                // Обновляем данные и переходим на главную
                 await main(true); // forceRefresh = true
                 navigateToPage('home-page');
             });
@@ -809,7 +808,6 @@
             async function populateDiscoverPage() {
                 const discoverContent = document.getElementById('discover-content');
                 discoverContent.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
-                // Для "Интересного" можно использовать те же видео, что и в основной ленте
                 if (videos.length > 0) {
                     renderGridContent('discover-content', videos);
                 } else {
@@ -821,7 +819,6 @@
             async function populateInbox() {
                 const inboxContent = document.getElementById('inbox-content');
                 inboxContent.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Функционал чатов находится в разработке.</div></div>`;
-                // Здесь будет логика загрузки чатов
             }
 
             // ===================================================================
