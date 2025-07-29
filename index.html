@@ -226,6 +226,12 @@
             const initDataUnsafe = tg.initDataUnsafe || {};
             const user = initDataUnsafe.user || { id: 123456789, first_name: 'Test', last_name: 'User', username: 'testuser' };
 
+            // --- Bot Integration Details ---
+            const BOT_USERNAME = 'trixsocialbot';
+            // It's good practice to get the app name from the bot info if available,
+            // but for now we can hardcode a simple name. This name is part of the URL.
+            const MINI_APP_NAME = 'app'; 
+
             let videos = [];
             let currentVideoIndex = 0;
             let isSwiping = false;
@@ -635,7 +641,8 @@
             
             function handleShare(videoData) {
                 const shareText = `Смотри крутое видео от @${videoData.username} в Guid!`;
-                const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=video${videoData.id}`;
+                // UPDATED: Using the correct bot username and app name for the share URL
+                const shareUrl = `https://t.me/${BOT_USERNAME}/${MINI_APP_NAME}?startapp=video${videoData.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 
@@ -645,7 +652,8 @@
 
             function handleShareProfile(profile) {
                 const shareText = `Подписывайся на @${profile.username} в Guid!`;
-                const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=user${profile.id}`;
+                // UPDATED: Using the correct bot username and app name for the share URL
+                const shareUrl = `https://t.me/${BOT_USERNAME}/${MINI_APP_NAME}?startapp=user${profile.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 
