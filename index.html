@@ -61,7 +61,7 @@
         #edit-profile-page .header,
         #user-profile-page .header,
         #profile-page .header {
-            padding-top: calc(55px + var(--safe-area-inset-top));
+            padding-top: calc(80px + var(--safe-area-inset-top));
         }
 
         .search-bar { display: flex; padding: 15px; position: sticky; top: 0; background-color: var(--tg-bg); z-index: 11; }
@@ -162,12 +162,42 @@
             z-index: 1000;
         }
         .global-loader.show { display: flex; }
+
+        /* Кастомное уведомление */
+        .custom-alert {
+            position: fixed;
+            top: -100px; /* Start off-screen */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--tg-secondary-bg);
+            color: var(--tg-text);
+            padding: 15px 25px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 2000;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-size: 15px;
+            max-width: 90%;
+            text-align: center;
+        }
+        .custom-alert.show {
+            top: calc(15px + var(--safe-area-inset-top));
+        }
+        .custom-alert.error {
+            background-color: var(--accent-red);
+            color: white;
+        }
     </style>
 </head>
 <body data-view-mode="default">
     <!-- Глобальный загрузчик -->
     <div id="global-loader" class="global-loader">
         <div class="spinner"></div>
+    </div>
+
+    <!-- Кастомное уведомление -->
+    <div id="custom-alert" class="custom-alert">
+        <p id="custom-alert-message"></p>
     </div>
 
     <!-- Pages -->
@@ -370,7 +400,7 @@
                     }
                 } catch (error) {
                     console.error("Initialization failed:", error);
-                    this.tg.showAlert("Произошла ошибка при запуске приложения.");
+                    this.ui.showCustomAlert("Произошла ошибка при запуске приложения.", true);
                 } finally {
                     this.ui.showGlobalLoader(false);
                 }
@@ -384,7 +414,7 @@
                     if (videoData) {
                         this.ui.openVideoViewer(videoData);
                     } else {
-                        this.tg.showAlert('Видео не найдено.');
+                        this.ui.showCustomAlert('Видео не найдено.', true);
                         await this.main();
                     }
                 } else if (param.startsWith('user')) {
@@ -424,7 +454,7 @@
                     const { data, error } = await query.limit(50);
                     if (error) {
                         console.error('Error fetching videos:', error);
-                        app.tg.showAlert(`Не удалось загрузить видео: ${error.message}.`);
+                        app.ui.showCustomAlert(`Не удалось загрузить видео: ${error.message}.`, true);
                         return [];
                     }
                     return data.map(v => ({
@@ -495,6 +525,20 @@
             ui: {
                 showGlobalLoader(show) {
                     document.getElementById('global-loader').classList.toggle('show', show);
+                },
+                showCustomAlert(message, isError = false) {
+                    const alertElement = document.getElementById('custom-alert');
+                    const messageElement = document.getElementById('custom-alert-message');
+                    
+                    if (!alertElement || !messageElement) return;
+
+                    messageElement.textContent = message;
+                    alertElement.classList.toggle('error', isError);
+                    alertElement.classList.add('show');
+
+                    setTimeout(() => {
+                        alertElement.classList.remove('show');
+                    }, 3000);
                 },
                 navigateToPage(pageId) {
                     const body = document.body;
@@ -662,7 +706,7 @@
                             page.querySelector('#share-profile-btn').addEventListener('click', () => app.handlers.shareProfile(profile));
                         } else {
                             app.ui.updateProfileFollowButton(page, profileId);
-                            page.querySelector('#profile-message-btn').addEventListener('click', () => app.tg.showAlert('Сообщения в разработке!'));
+                            page.querySelector('#profile-message-btn').addEventListener('click', () => app.ui.showCustomAlert('Сообщения в разработке!'));
                         }
                         
                         page.querySelector(`#${pageId}-tabs`).addEventListener('click', (e) => app.handlers.handleTabClick(e, profileId, pageId));
@@ -914,7 +958,7 @@
                         }
                     } catch(error) {
                         console.error("Follow error:", error);
-                        app.tg.showAlert('Действие не удалось. Попробуйте снова.');
+                        app.ui.showCustomAlert('Действие не удалось. Попробуйте снова.', true);
                     }
                 },
                 async applyDiscoverFilters() {
@@ -995,7 +1039,7 @@
                         list.scrollTop = list.scrollHeight;
                     } catch (error) {
                         console.error('Error posting comment:', error);
-                        app.tg.showAlert('Не удалось отправить комментарий.');
+                        app.ui.showCustomAlert('Не удалось отправить комментарий.', true);
                         app.tg.HapticFeedback.notificationOccurred('error');
                     }
                 },
@@ -1007,7 +1051,7 @@
                         document.getElementById('edit-username').value = profile.username || '';
                         app.ui.navigateToPage('edit-profile-page');
                     } catch (error) {
-                        app.tg.showAlert('Не удалось загрузить данные профиля.');
+                        app.ui.showCustomAlert('Не удалось загрузить данные профиля.', true);
                     }
                 },
                 async saveProfile() {
@@ -1021,13 +1065,13 @@
                     };
                     try {
                         await app.supabase.from('profiles').upsert(updates);
-                        app.tg.showAlert('Сохранено! Ваш профиль обновлен.');
+                        app.ui.showCustomAlert('Сохранено! Ваш профиль обновлен.');
                         app.tg.HapticFeedback.notificationOccurred('success');
                         await app.ui.populateProfile(app.user.id);
                         app.ui.navigateToPage('profile-page');
                     } catch (error) {
                         console.error("Profile save error:", error);
-                        app.tg.showAlert('Ошибка сохранения: ' + error.message);
+                        app.ui.showCustomAlert('Ошибка сохранения: ' + error.message, true);
                         app.tg.HapticFeedback.notificationOccurred('error');
                     } finally {
                         app.tg.MainButton.hideProgress();
@@ -1041,7 +1085,7 @@
                     const discipline = document.getElementById('video-discipline').value;
                     const style = document.getElementById('video-style').value;
                     if (!description || !discipline || !style) {
-                        app.tg.showAlert('Пожалуйста, заполните все поля.');
+                        app.ui.showCustomAlert('Пожалуйста, заполните все поля.', true);
                         return;
                     }
 
@@ -1060,7 +1104,7 @@
                         });
 
                         app.tg.HapticFeedback.notificationOccurred('success');
-                        app.tg.showAlert('Успех! Ваше видео опубликовано.');
+                        app.ui.showCustomAlert('Успех! Ваше видео опубликовано.');
                         
                         document.getElementById('upload-form').classList.remove('visible');
                         document.getElementById('video-description').value = '';
@@ -1073,7 +1117,7 @@
                         await app.main(true);
                     } catch (error) {
                         console.error('Publish error:', error);
-                        app.tg.showAlert(`Ошибка публикации: ${error.message}.`);
+                        app.ui.showCustomAlert(`Ошибка публикации: ${error.message}.`, true);
                         app.tg.HapticFeedback.notificationOccurred('error');
                     } finally {
                         app.ui.showGlobalLoader(false);
@@ -1170,11 +1214,11 @@
                             city: app.onboardingData.city
                         }).eq('id', app.user.id);
                         app.tg.HapticFeedback.notificationOccurred('success');
-                        app.tg.showAlert('Добро пожаловать!');
+                        app.ui.showCustomAlert('Добро пожаловать!');
                         await app.main(true);
                     } catch (error) {
                         console.error('Error saving onboarding data:', error);
-                        app.tg.showAlert('Не удалось сохранить данные. Попробуйте снова.');
+                        app.ui.showCustomAlert('Не удалось сохранить данные. Попробуйте снова.', true);
                         app.tg.HapticFeedback.notificationOccurred('error');
                     } finally {
                         app.ui.showGlobalLoader(false);
