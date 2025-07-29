@@ -33,15 +33,16 @@
         .video-wrapper.prev { display: block; z-index: 1; transform: translateY(-100%); }
         .video-player { width: 100%; height: 100%; object-fit: cover; background-color: #000; }
         .video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%); pointer-events: none; }
-        /* ИЗМЕНЕНО: Позиция блока с информацией опущена ниже */
-        .video-info { position: absolute; bottom: 65px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
+        /* ИЗМЕНЕНО: Позиция блока с информацией и боковой панели скорректирована */
+        .video-info { position: absolute; bottom: 70px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
         .username { font-weight: bold; font-size: 16px; margin-bottom: 5px; cursor: pointer; }
         .description { font-size: 14px; margin-bottom: 10px; line-height: 1.4; }
-        /* ИЗМЕНЕНО: Позиция боковой панели опущена ниже */
-        .right-sidebar { position: absolute; right: 15px; bottom: 65px; display: flex; flex-direction: column; align-items: center; z-index: 10; color: #fff; }
+        .right-sidebar { position: absolute; right: 15px; bottom: 70px; display: flex; flex-direction: column; align-items: center; z-index: 10; color: #fff; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #fff; margin-bottom: 25px; background-color: var(--tg-secondary-bg); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; position: relative; }
         .follow-button { position: absolute; bottom: -10px; background-color: var(--accent-red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 2px solid #000; cursor: pointer; }
         .action-button { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; cursor: pointer; }
+        /* ИЗМЕНЕНО: Убран нижний отступ у последней кнопки */
+        .action-button:last-child { margin-bottom: 0; }
         .action-icon { font-size: 30px; margin-bottom: 5px; transition: transform 0.2s ease; }
         .action-icon.liked { color: var(--accent-red); }
         .action-button:active .action-icon { transform: scale(0.9); }
@@ -271,7 +272,6 @@
                 videoWrapper.className = `video-wrapper ${classNames}`;
                 videoWrapper.dataset.videoId = videoData.id;
 
-                // ИЗМЕНЕНО: убран атрибут `muted` для автозапуска со звуком
                 videoWrapper.innerHTML = `
                     <video class="video-player" src="${videoData.url}" loop playsinline></video>
                     <div class="video-overlay"></div>
@@ -301,10 +301,8 @@
                 videoWrapper.querySelector('.username').addEventListener('click', (e) => { e.stopPropagation(); navigateToUserProfile(videoData.userId); });
                 videoWrapper.querySelector('.avatar').addEventListener('click', (e) => { e.stopPropagation(); navigateToUserProfile(videoData.userId); });
 
-                // ИЗМЕНЕНО: Добавлена логика для обработки одиночного и двойного клика
                 let clickTimer = null;
                 videoWrapper.addEventListener('click', (e) => {
-                    // Убедимся, что клик был по самому контейнеру или видео, а не по кнопкам
                     if (e.target !== videoWrapper && e.target.closest('.video-info, .right-sidebar')) {
                         return;
                     }
@@ -312,7 +310,6 @@
                     if (clickTimer === null) {
                         clickTimer = setTimeout(() => {
                             clickTimer = null;
-                            // Действие для одиночного клика: пауза/воспроизведение
                             const video = videoWrapper.querySelector('.video-player');
                             if (video) {
                                 if (video.paused) {
@@ -323,7 +320,6 @@
                             }
                         }, 300);
                     } else {
-                        // Действие для двойного клика: лайк
                         clearTimeout(clickTimer);
                         clickTimer = null;
                         handleLike(videoWrapper, videoData, true);
@@ -348,22 +344,33 @@
                 playCurrentVideo();
             }
 
+            // ИЗМЕНЕНО: Улучшена логика воспроизведения видео со звуком
             function playCurrentVideo() {
-                document.querySelectorAll('.video-player').forEach(v => { v.pause(); v.currentTime = 0; });
-                const activeVideo = document.querySelector('.video-wrapper.active .video-player');
+                // Сначала приостанавливаем и отключаем звук для всех видео
+                document.querySelectorAll('.video-player').forEach(v => {
+                    v.pause();
+                    v.muted = true;
+                });
+
+                const activeVideoWrapper = document.querySelector('.video-wrapper.active');
+                if (!activeVideoWrapper) return;
+
+                const activeVideo = activeVideoWrapper.querySelector('.video-player');
+                const loadingIndicator = activeVideoWrapper.querySelector('.loading-indicator');
+
                 if (activeVideo) {
-                    const loadingIndicator = activeVideo.parentElement.querySelector('.loading-indicator');
+                    // Включаем звук для текущего видео
+                    activeVideo.muted = false;
+                    activeVideo.currentTime = 0;
                     loadingIndicator.style.display = 'flex';
-                    
-                    // Пытаемся воспроизвести видео. Браузер может блокировать автовоспроизведение со звуком.
+
+                    // Пытаемся воспроизвести со звуком
                     const playPromise = activeVideo.play();
                     if (playPromise !== undefined) {
-                        playPromise.then(_ => {
-                            // Воспроизведение началось
-                        }).catch(error => {
-                            // Ошибка воспроизведения. Возможно, нужна активация звука по клику.
-                            console.error("Play error:", error);
-                            // Можно показать иконку "звук выключен" и включить по клику
+                        playPromise.catch(error => {
+                            // Это может произойти, если браузер блокирует автозапуск со звуком
+                            console.error("Autoplay with sound failed, trying muted:", error);
+                            // В качестве запасного варианта воспроизводим без звука
                             activeVideo.muted = true;
                             activeVideo.play();
                         });
@@ -372,7 +379,6 @@
                     activeVideo.oncanplaythrough = () => {
                         loadingIndicator.style.display = 'none';
                     };
-                    activeVideo.load();
                 }
             }
 
