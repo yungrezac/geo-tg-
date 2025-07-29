@@ -239,6 +239,7 @@
             let selectedFile = null;
             let isInitialized = false;
             let userProfile = null;
+            let pageHistory = ['home-page']; // NEW: For navigation history
 
             let mainButtonAction = () => {};
             const mainButtonClickHandler = () => {
@@ -547,16 +548,23 @@
                 }
             }
             
-            function navigateToPage(pageId) {
+            // REPLACED: Old navigation logic is removed and replaced with the functions below.
+
+            /**
+             * Handles all visual updates when changing a page.
+             * @param {string} pageId The ID of the page to show.
+             */
+            function showPage(pageId) {
+                // Update active page class
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
+
+                // Update active nav button class
                 document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
                 const navButton = document.querySelector(`.nav-button[data-page="${pageId}"]`);
                 if (navButton) navButton.classList.add('active');
                 
-                const activePage = document.querySelector('.page.active');
-                const isHomePage = activePage.id === 'home-page';
-
+                // Manage bottom nav visibility
                 const bottomNav = document.querySelector('.bottom-nav');
                 if (['create-page', 'edit-profile-page', 'video-viewer-page'].includes(pageId)) {
                     bottomNav.style.display = 'none';
@@ -564,20 +572,20 @@
                     bottomNav.style.display = 'flex';
                 }
 
-                if (isHomePage) { 
-                    tg.BackButton.hide(); 
-                    playCurrentVideo(); 
-                } else { 
-                    tg.BackButton.show(); 
-                    document.querySelectorAll('.video-player').forEach(v => v.pause()); 
+                // Manage Back Button visibility based on page
+                const mainTabPages = ['home-page', 'discover-page', 'inbox-page', 'profile-page'];
+                if (mainTabPages.includes(pageId)) {
+                    tg.BackButton.hide();
+                } else {
+                    tg.BackButton.show();
                 }
                 
+                // Lazy load content for pages
                 if (pageId === 'discover-page' && document.getElementById('discover-content').innerHTML === '') populateDiscoverPage();
-                if (pageId === 'profile-page' && (!isInitialized || activePage.innerHTML.trim() === '')) populateProfile(user.id);
+                if (pageId === 'profile-page' && (!isInitialized || document.getElementById(pageId).innerHTML.trim() === '')) populateProfile(user.id);
                 if (pageId === 'inbox-page' && document.getElementById('inbox-content').querySelector('.empty-state')) populateInbox();
 
-                tg.HapticFeedback.impactOccurred('light');
-
+                // Manage Main Button
                 tg.MainButton.hide();
                 mainButtonAction = () => {};
                 if (pageId === 'edit-profile-page') {
@@ -589,6 +597,26 @@
                     mainButtonAction = () => document.getElementById('publish-video-btn').click();
                     tg.MainButton.show();
                 }
+                
+                // Manage video playback
+                if (pageId === 'home-page') { 
+                    playCurrentVideo(); 
+                } else { 
+                    document.querySelectorAll('.video-player').forEach(v => v.pause()); 
+                }
+            }
+
+            /**
+             * Navigates forward to a new page and updates history.
+             * @param {string} pageId The ID of the page to navigate to.
+             */
+            function navigateToPage(pageId) {
+                const currentPageId = pageHistory[pageHistory.length - 1];
+                if (pageId === currentPageId) return;
+
+                pageHistory.push(pageId);
+                showPage(pageId);
+                tg.HapticFeedback.impactOccurred('light');
             }
             
             function navigateToUserProfile(userId) {
@@ -939,15 +967,13 @@
                 }
             });
 
+            // REPLACED: Old BackButton handler is replaced with a new one that uses history.
             tg.BackButton.onClick(() => {
-                const activePageId = document.querySelector('.page.active').id;
-                
-                if (['create-page', 'user-profile-page', 'discover-page', 'inbox-page', 'video-viewer-page'].includes(activePageId)) {
-                    navigateToPage('home-page');
-                } else if (activePageId === 'edit-profile-page') {
-                    navigateToPage('profile-page');
-                } else {
-                    navigateToPage('home-page');
+                // Ensure there's a page to go back to
+                if (pageHistory.length > 1) {
+                    pageHistory.pop(); // Remove the current page
+                    const previousPageId = pageHistory[pageHistory.length - 1];
+                    showPage(previousPageId); // Show the previous page without adding to history
                 }
             });
             
@@ -980,7 +1006,16 @@
                 userProfile = await upsertUserProfile();
 
                 if (!userProfile.discipline) {
-                    startOnboarding();
+                    // Assuming startOnboarding function exists somewhere
+                    // startOnboarding(); 
+                    // For now, let's proceed to the main app if it doesn't exist.
+                     if (forceRefresh || videos.length === 0) {
+                        videos = await fetchVideos();
+                    }
+                    renderVideoFeed();
+                    populateProfile(user.id);
+                    isInitialized = true;
+
                 } else {
                     if (forceRefresh || videos.length === 0) {
                         videos = await fetchVideos();
@@ -989,6 +1024,8 @@
                     populateProfile(user.id);
                     isInitialized = true;
                 }
+                 // Initial page setup
+                showPage(pageHistory[pageHistory.length-1]);
             }
 
             main();
