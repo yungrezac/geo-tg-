@@ -33,7 +33,6 @@
         .video-wrapper.prev { display: block; z-index: 1; transform: translateY(-100%); }
         .video-player { width: 100%; height: 100%; object-fit: cover; background-color: #000; }
         .video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%); pointer-events: none; }
-        /* ИЗМЕНЕНО: Элементы опущены ниже к навбару */
         .video-info { position: absolute; bottom: 65px; left: 15px; z-index: 10; max-width: 70%; color: #fff; }
         .username { font-weight: bold; font-size: 16px; margin-bottom: 5px; cursor: pointer; }
         .description { font-size: 14px; margin-bottom: 10px; line-height: 1.4; }
@@ -150,7 +149,8 @@
                 <label for="video-description">Описание</label>
                 <textarea id="video-description" rows="3" placeholder="Расскажите о вашем видео..."></textarea>
             </div>
-            <div class="profile-button profile-button-primary" id="publish-video-btn">Опубликовать</div>
+            <!-- ИЗМЕНЕНО: Кнопка скрыта, так как ее заменяет MainButton -->
+            <div class="profile-button profile-button-primary" id="publish-video-btn" style="display: none;">Опубликовать</div>
             <div id="upload-progress"><div id="upload-progress-bar"></div></div>
         </div>
     </div>
@@ -172,7 +172,8 @@
                 <label for="edit-username">Имя пользователя</label>
                 <input type="text" id="edit-username">
             </div>
-            <div class="profile-button profile-button-primary" id="save-profile-btn">Сохранить</div>
+            <!-- ИЗМЕНЕНО: Кнопка скрыта, так как ее заменяет MainButton -->
+            <div class="profile-button profile-button-primary" id="save-profile-btn" style="display: none;">Сохранить</div>
         </div>
     </div>
     <div id="user-profile-page" class="page"></div>
@@ -199,6 +200,14 @@
             tg.ready();
             tg.expand();
             tg.disableVerticalSwipes();
+            // ДОБАВЛЕНО: Защита от случайного закрытия
+            tg.enableClosingConfirmation();
+
+            // ДОБАВЛЕНО: Отслеживание изменения темы (для демонстрации)
+            tg.onEvent('themeChanged', () => {
+                // CSS переменные обновятся автоматически, но здесь можно выполнить доп. логику
+                console.log('Тема Telegram изменилась!', tg.themeParams);
+            });
 
             const SUPABASE_URL = 'https://bbtkaiondhlxaxvcvces.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidGthaW9uZGhseGF4dmN2Y2VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM3NDcyNDUsImV4cCI6MjA2OTMyMzI0NX0.yE-IT4RJoJQC8hAtSCgh9Nh4fX-cADts-DDxuOnVloY';
@@ -213,6 +222,16 @@
             let activeCommentsVideoId = null;
             let selectedFile = null;
             let isInitialized = false;
+
+            // ДОБАВЛЕНО: Логика для главной кнопки Telegram
+            let mainButtonAction = () => {};
+            const mainButtonClickHandler = () => {
+                if (mainButtonAction) {
+                    mainButtonAction();
+                }
+            };
+            tg.MainButton.onClick(mainButtonClickHandler);
+
 
             async function upsertUserProfile() {
                 const { data, error } = await supabase.from('profiles').upsert({
@@ -472,7 +491,8 @@
                 
                 const actionsContainer = page.querySelector('.profile-actions');
                 if (isMyProfile) {
-                    actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic">Изменить профиль</div>`;
+                    // ИЗМЕНЕНО: Кнопка скрыта, ее заменяет MainButton
+                    actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic" style="display: none;">Изменить профиль</div>`;
                     page.querySelector('#edit-profile-btn-dynamic').addEventListener('click', openEditProfile);
                 } else {
                     updateProfileFollowButton(page, profileId);
@@ -517,6 +537,24 @@
                 if (pageId === 'inbox-page' && document.getElementById('inbox-content').querySelector('.empty-state')) populateInbox();
 
                 tg.HapticFeedback.impactOccurred('light');
+
+                // ДОБАВЛЕНО: Управление главной кнопкой
+                tg.MainButton.hide();
+                if (pageId === 'profile-page') {
+                    tg.MainButton.setText('Редактировать профиль');
+                    mainButtonAction = openEditProfile;
+                    tg.MainButton.show();
+                } else if (pageId === 'edit-profile-page') {
+                    tg.MainButton.setText('Сохранить изменения');
+                    mainButtonAction = () => document.getElementById('save-profile-btn').click();
+                    tg.MainButton.show();
+                } else if (pageId === 'create-page' && selectedFile) {
+                    tg.MainButton.setText('Опубликовать видео');
+                    mainButtonAction = () => document.getElementById('publish-video-btn').click();
+                    tg.MainButton.show();
+                } else {
+                    mainButtonAction = () => {};
+                }
             }
             
             function navigateToUserProfile(userId) {
@@ -559,8 +597,7 @@
                 const icon = videoWrapper.querySelector('.save-btn i');
                 icon.classList.toggle('fas', videoData.isSaved);
                 icon.classList.toggle('far', !videoData.isSaved);
-                tg.HapticFeedback.impactOccurred('light');
-                tg.showAlert(videoData.isSaved ? 'Видео сохранено.' : 'Сохранение отменено.');
+                tg.HapticFeedback.notificationOccurred('success');
                 if (videoData.isSaved) {
                     await supabase.from('saves').insert({ video_id: videoData.id, user_id: user.id });
                 } else {
@@ -568,11 +605,9 @@
                 }
             }
             
-            // ДОБАВЛЕНО: Функция для кнопки "Поделиться"
             function handleShare(videoData) {
-                const shareText = `Смотри это видео от @${videoData.username}: ${videoData.description}`;
-                // В реальном приложении здесь должна быть ссылка на ваше приложение или бота с параметром для открытия конкретного видео
-                const shareUrl = window.location.href; 
+                const shareText = `Смотри крутое видео от @${videoData.username} в Guid!`;
+                const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=video${videoData.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 
@@ -629,6 +664,7 @@
                 if (error) {
                     console.error('Error posting comment:', error);
                     tg.showAlert('Не удалось отправить комментарий.');
+                    tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 input.value = '';
@@ -662,8 +698,10 @@
                 if (error) {
                     console.error("Follow/Unfollow error", error);
                     tg.showAlert('Действие не удалось. Попробуйте снова.');
+                    tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
+                tg.HapticFeedback.notificationOccurred('success');
                 const activeVideoWrapper = document.querySelector('.video-wrapper.active');
                 if (activeVideoWrapper && activeVideoWrapper.querySelector(`[data-user-id="${followedId}"]`)) {
                     await updateFollowButton(activeVideoWrapper, followedId);
@@ -736,7 +774,6 @@
                 selectedFile = event.target.files[0];
                 if (selectedFile) {
                     navigateToPage('create-page');
-                    document.querySelector('#create-page #upload-form').style.display = 'block';
                 }
                 event.target.value = null; 
             });
@@ -746,22 +783,9 @@
                     tg.showAlert('Пожалуйста, выберите файл для загрузки.');
                     return;
                 }
+                tg.MainButton.showProgress();
                 const description = document.getElementById('video-description').value.trim();
-                const publishBtn = document.getElementById('publish-video-btn');
-                const progressContainer = document.getElementById('upload-progress');
-                const progressBar = document.getElementById('upload-progress-bar');
                 
-                const resetBtn = () => {
-                    publishBtn.textContent = 'Опубликовать';
-                    publishBtn.style.pointerEvents = 'auto';
-                    progressContainer.style.display = 'none';
-                    progressBar.style.width = '0%';
-                };
-
-                publishBtn.textContent = 'Публикация...';
-                publishBtn.style.pointerEvents = 'none';
-                progressContainer.style.display = 'block';
-
                 const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
                 
                 const { error: uploadError } = await supabase.storage
@@ -771,12 +795,11 @@
                 if (uploadError) {
                     console.error('Upload error:', uploadError);
                     tg.showAlert(`Ошибка загрузки файла: ${uploadError.message}.`);
-                    resetBtn();
+                    tg.HapticFeedback.notificationOccurred('error');
+                    tg.MainButton.hideProgress();
                     return;
                 }
                 
-                progressBar.style.width = '100%'; 
-
                 const { data: publicUrlData } = supabase.storage.from('video').getPublicUrl(fileName);
                 
                 const { error: dbError } = await supabase.from('videos').insert({
@@ -785,19 +808,21 @@
                     video_url: publicUrlData.publicUrl
                 });
 
+                tg.MainButton.hideProgress();
+
                 if (dbError) {
                     console.error('Database error:', dbError);
                     tg.showAlert(`Ошибка сохранения данных: ${dbError.message}.`);
-                    resetBtn();
+                    tg.HapticFeedback.notificationOccurred('error');
                     return;
                 }
                 
+                tg.HapticFeedback.notificationOccurred('success');
                 tg.showAlert('Успех! Ваше видео опубликовано.');
                 
                 document.getElementById('upload-form').style.display = 'none';
                 document.getElementById('video-description').value = '';
                 selectedFile = null;
-                resetBtn();
                 
                 await main(true);
                 navigateToPage('home-page');
@@ -816,9 +841,7 @@
             }
 
             document.getElementById('save-profile-btn').addEventListener('click', async () => {
-                const btn = document.getElementById('save-profile-btn');
-                btn.textContent = 'Сохранение...';
-                btn.style.pointerEvents = 'none';
+                tg.MainButton.showProgress();
 
                 const updates = {
                     id: user.id,
@@ -830,14 +853,15 @@
 
                 const { error } = await supabase.from('profiles').upsert(updates);
 
-                btn.textContent = 'Сохранить';
-                btn.style.pointerEvents = 'auto';
+                tg.MainButton.hideProgress();
 
                 if (error) {
                     console.error("Profile save error:", error);
                     tg.showAlert('Ошибка сохранения: ' + error.message);
+                    tg.HapticFeedback.notificationOccurred('error');
                 } else {
                     tg.showAlert('Сохранено! Ваш профиль обновлен.');
+                    tg.HapticFeedback.notificationOccurred('success');
                     await populateProfile(user.id);
                     navigateToPage('profile-page');
                 }
