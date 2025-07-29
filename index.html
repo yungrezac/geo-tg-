@@ -149,7 +149,6 @@
                 <label for="video-description">Описание</label>
                 <textarea id="video-description" rows="3" placeholder="Расскажите о вашем видео..."></textarea>
             </div>
-            <!-- ИЗМЕНЕНО: Кнопка скрыта, так как ее заменяет MainButton -->
             <div class="profile-button profile-button-primary" id="publish-video-btn" style="display: none;">Опубликовать</div>
             <div id="upload-progress"><div id="upload-progress-bar"></div></div>
         </div>
@@ -172,7 +171,6 @@
                 <label for="edit-username">Имя пользователя</label>
                 <input type="text" id="edit-username">
             </div>
-            <!-- ИЗМЕНЕНО: Кнопка скрыта, так как ее заменяет MainButton -->
             <div class="profile-button profile-button-primary" id="save-profile-btn" style="display: none;">Сохранить</div>
         </div>
     </div>
@@ -200,12 +198,9 @@
             tg.ready();
             tg.expand();
             tg.disableVerticalSwipes();
-            // ДОБАВЛЕНО: Защита от случайного закрытия
             tg.enableClosingConfirmation();
 
-            // ДОБАВЛЕНО: Отслеживание изменения темы (для демонстрации)
             tg.onEvent('themeChanged', () => {
-                // CSS переменные обновятся автоматически, но здесь можно выполнить доп. логику
                 console.log('Тема Telegram изменилась!', tg.themeParams);
             });
 
@@ -223,7 +218,6 @@
             let selectedFile = null;
             let isInitialized = false;
 
-            // ДОБАВЛЕНО: Логика для главной кнопки Telegram
             let mainButtonAction = () => {};
             const mainButtonClickHandler = () => {
                 if (mainButtonAction) {
@@ -466,6 +460,13 @@
 
                 const stats = await fetchProfileStats(profileId);
                 
+                // ИЗМЕНЕНО: HTML для кнопок в профиле
+                const profileActionsHTML = isMyProfile ? `
+                    <div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic">Изменить профиль</div>
+                    <div class="profile-button profile-button-secondary" id="share-profile-btn"><i class="fas fa-share-alt"></i></div>
+                    <div class="profile-button profile-button-secondary" id="settings-btn"><i class="fas fa-cog"></i></div>
+                ` : '';
+
                 const profileHTML = `
                     <div class="profile-header">
                         <div class="profile-avatar">${(profile.first_name || 'U').charAt(0).toUpperCase()}</div>
@@ -476,7 +477,7 @@
                             <div class="profile-stat"><div class="stat-value">${stats.followers}</div><div class="stat-label">Подписчики</div></div>
                             <div class="profile-stat"><div class="stat-value">${stats.likes}</div><div class="stat-label">Лайки</div></div>
                         </div>
-                        <div class="profile-actions" data-user-id="${profileId}"></div>
+                        <div class="profile-actions" data-user-id="${profileId}">${profileActionsHTML}</div>
                     </div>
                     <div class="tabs-container" id="${pageId}-tabs">
                         <div class="tab active" data-content="my-videos"><i class="fas fa-th"></i></div>
@@ -491,9 +492,9 @@
                 
                 const actionsContainer = page.querySelector('.profile-actions');
                 if (isMyProfile) {
-                    // ИЗМЕНЕНО: Кнопка скрыта, ее заменяет MainButton
-                    actionsContainer.innerHTML = `<div class="profile-button profile-button-secondary" id="edit-profile-btn-dynamic" style="display: none;">Изменить профиль</div>`;
                     page.querySelector('#edit-profile-btn-dynamic').addEventListener('click', openEditProfile);
+                    page.querySelector('#share-profile-btn').addEventListener('click', () => handleShareProfile(profile));
+                    page.querySelector('#settings-btn').addEventListener('click', () => tg.showAlert('Раздел настроек в разработке!'));
                 } else {
                     updateProfileFollowButton(page, profileId);
                 }
@@ -524,6 +525,14 @@
                 const activePage = document.querySelector('.page.active');
                 const isHomePage = activePage.id === 'home-page';
 
+                // ИЗМЕНЕНО: Скрытие/показ навбара
+                const bottomNav = document.querySelector('.bottom-nav');
+                if (pageId === 'create-page') {
+                    bottomNav.style.display = 'none';
+                } else {
+                    bottomNav.style.display = 'flex';
+                }
+
                 if (isHomePage) { 
                     tg.BackButton.hide(); 
                     playCurrentVideo(); 
@@ -538,13 +547,10 @@
 
                 tg.HapticFeedback.impactOccurred('light');
 
-                // ДОБАВЛЕНО: Управление главной кнопкой
+                // ИЗМЕНЕНО: Управление главной кнопкой
                 tg.MainButton.hide();
-                if (pageId === 'profile-page') {
-                    tg.MainButton.setText('Редактировать профиль');
-                    mainButtonAction = openEditProfile;
-                    tg.MainButton.show();
-                } else if (pageId === 'edit-profile-page') {
+                mainButtonAction = () => {};
+                if (pageId === 'edit-profile-page') {
                     tg.MainButton.setText('Сохранить изменения');
                     mainButtonAction = () => document.getElementById('save-profile-btn').click();
                     tg.MainButton.show();
@@ -552,8 +558,6 @@
                     tg.MainButton.setText('Опубликовать видео');
                     mainButtonAction = () => document.getElementById('publish-video-btn').click();
                     tg.MainButton.show();
-                } else {
-                    mainButtonAction = () => {};
                 }
             }
             
@@ -608,6 +612,17 @@
             function handleShare(videoData) {
                 const shareText = `Смотри крутое видео от @${videoData.username} в Guid!`;
                 const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=video${videoData.id}`;
+                
+                const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                
+                tg.openTelegramLink(telegramShareUrl);
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+
+            // ДОБАВЛЕНО: Функция "Поделиться профилем"
+            function handleShareProfile(profile) {
+                const shareText = `Подписывайся на @${profile.username} в Guid!`;
+                const shareUrl = `https://t.me/YOUR_BOT_USERNAME/YOUR_APP_NAME?startapp=user${profile.id}`;
                 
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                 
@@ -960,4 +975,4 @@
         });
     </script>
 </body>
-</html>
+</ht
