@@ -182,8 +182,61 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // ===================================================================
-            // 1. Инициализация SDK и клиентов
+            // !!! ВАЖНО: НАСТРОЙКА ПРАВ ДОСТУПА (ROW LEVEL SECURITY) В SUPABASE !!!
             // ===================================================================
+            //
+            // Ошибки "ничего не найдено" и "не удается загрузить" почти всегда 
+            // связаны с отсутствием прав доступа в Supabase.
+            //
+            // Чтобы приложение заработало, зайдите в ваш проект Supabase,
+            // откройте "SQL Editor" и выполните следующие запросы ОДИН ЗА ДРУГИМ.
+            //
+            // 1. РАЗРЕШИТЬ ЧТЕНИЕ ВСЕХ ПРОФИЛЕЙ:
+            //    (Нужно, чтобы видеть авторов видео)
+            //
+            //    CREATE POLICY "Public profiles are viewable by everyone."
+            //    ON public.profiles FOR SELECT
+            //    USING ( true );
+            //
+            // 2. РАЗРЕШИТЬ ПОЛЬЗОВАТЕЛЯМ ОБНОВЛЯТЬ СВОЙ ПРОФИЛЬ:
+            //
+            //    CREATE POLICY "Users can update their own profile."
+            //    ON public.profiles FOR UPDATE
+            //    USING ( auth.uid() = id );
+            //
+            // 3. РАЗРЕШИТЬ ЧТЕНИЕ ВСЕХ ВИДЕО:
+            //    (Нужно для главной ленты)
+            //
+            //    CREATE POLICY "Videos are viewable by everyone."
+            //    ON public.videos FOR SELECT
+            //    USING ( true );
+            //
+            // 4. РАЗРЕШИТЬ ПОЛЬЗОВАТЕЛЯМ ЗАГРУЖАТЬ СВОИ ВИДЕО:
+            //
+            //    CREATE POLICY "Users can insert their own videos."
+            //    ON public.videos FOR INSERT
+            //    WITH CHECK ( auth.uid() = user_id );
+            //
+            // 5. НАСТРОЙКА ХРАНИЛИЩА (Storage):
+            //    Зайдите в "Storage" -> "Policies". Выберите бакет "video".
+            //    Создайте 2 новых правила (Policy):
+            //
+            //    a) ПРАВИЛО ДЛЯ ЧТЕНИЯ ФАЙЛОВ (SELECT):
+            //       - Policy Name: "Allow public read access"
+            //       - Allowed operations: Отметьте "select"
+            //       - Target roles: anon, authenticated
+            //       - Policy definition (USING expression): true
+            //
+            //    b) ПРАВИЛО ДЛЯ ЗАГРУЗКИ ФАЙЛОВ (INSERT):
+            //       - Policy Name: "Allow authenticated users to upload"
+            //       - Allowed operations: Отметьте "insert"
+            //       - Target roles: authenticated
+            //       - Policy definition (WITH CHECK expression): bucket_id = 'video'
+            //
+            // ПОСЛЕ ВЫПОЛНЕНИЯ ЭТИХ ШАГОВ ПРИЛОЖЕНИЕ ДОЛЖНО ЗАРАБОТАТЬ.
+            //
+            // ===================================================================
+
             const tg = window.Telegram.WebApp;
             tg.ready();
             tg.expand();
@@ -195,19 +248,12 @@
             const initDataUnsafe = tg.initDataUnsafe || {};
             const user = initDataUnsafe.user || { id: 123456789, first_name: 'Test', last_name: 'User', username: 'testuser' };
 
-            // ===================================================================
-            // 2. Глобальные переменные состояния
-            // ===================================================================
             let videos = [];
             let currentVideoIndex = 0;
             let isSwiping = false;
             let activeCommentsVideoId = null;
             let selectedFile = null;
             let isInitialized = false;
-
-            // ===================================================================
-            // 3. Функции для работы с API Supabase
-            // ===================================================================
 
             async function upsertUserProfile() {
                 const { data, error } = await supabase.from('profiles').upsert({
@@ -221,8 +267,6 @@
             }
 
             async function fetchVideos() {
-                // ИСПРАВЛЕНО: Явно указана внутренняя связь (inner join) с таблицей профилей.
-                // Это гарантирует, что в ленту попадут только видео от существующих пользователей.
                 const { data, error } = await supabase
                     .from('videos')
                     .select(`
@@ -236,14 +280,14 @@
 
                 if (error) {
                     console.error('Error fetching videos:', error);
-                    // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
-                    tg.showAlert(`Не удалось загрузить видео: ${error.message}`);
+                    tg.showAlert(`Не удалось загрузить видео: ${error.message}. Проверьте RLS-правила для таблиц 'videos' и 'profiles' в Supabase.`);
                     return [];
                 }
                 
                 return data.map(v => ({
                     id: v.id, url: v.video_url, description: v.description, userId: v.user_id,
-                    username: v.profiles.username, author: v.profiles,
+                    username: v.profiles?.username || 'unknown', 
+                    author: v.profiles,
                     likesCount: v.likes.length, commentsCount: v.comments.length,
                     isLiked: v.likes.some(like => like.user_id === user.id),
                     isSaved: v.saves.some(save => save.user_id === user.id)
@@ -251,12 +295,12 @@
             }
             
             async function fetchProfileStats(userId) {
-                const { data: following, error: followingError } = await supabase.from('followers').select('followed_id', { count: 'exact' }).eq('follower_id', userId);
-                const { data: followers, error: followersError } = await supabase.from('followers').select('follower_id', { count: 'exact' }).eq('followed_id', userId);
+                const { count: followingCount } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', userId);
+                const { count: followersCount } = await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('followed_id', userId);
                 const { data: userVideos, error: videosError } = await supabase.from('videos').select('id').eq('user_id', userId);
                 
-                if (followingError || followersError || videosError) {
-                    console.error('Error fetching stats', followingError, followersError, videosError);
+                if (videosError) {
+                    console.error('Error fetching user videos for stats', videosError);
                     return { following: 0, followers: 0, likes: 0 };
                 }
 
@@ -268,15 +312,11 @@
                 }
                 
                 return {
-                    following: (await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('follower_id', userId)).count || 0,
-                    followers: (await supabase.from('followers').select('*', { count: 'exact', head: true }).eq('followed_id', userId)).count || 0,
+                    following: followingCount || 0,
+                    followers: followersCount || 0,
                     likes: totalLikes
                 };
             }
-
-            // ===================================================================
-            // 4. Функции для отрисовки интерфейса
-            // ===================================================================
 
             function createVideoElement(videoData, classNames = '') {
                 const videoWrapper = document.createElement('div');
@@ -292,8 +332,7 @@
                         <div class="description">${videoData.description}</div>
                     </div>
                     <div class="right-sidebar">
-                        <div class="avatar" data-user-id="${videoData.userId}">${videoData.username.charAt(0).toUpperCase()}
-                            </div>
+                        <div class="avatar" data-user-id="${videoData.userId}">${(videoData.username || 'U').charAt(0).toUpperCase()}</div>
                         <div class="action-button like-btn">
                             <i class="action-icon ${videoData.isLiked ? 'fas liked' : 'far'} fa-heart"></i>
                             <div class="action-count">${videoData.likesCount}</div>
@@ -307,7 +346,6 @@
                         </div>
                     </div>`;
                 
-                // Event Listeners
                 videoWrapper.querySelector('.like-btn').addEventListener('click', (e) => { e.stopPropagation(); handleLike(videoWrapper, videoData); });
                 videoWrapper.querySelector('.save-btn').addEventListener('click', (e) => { e.stopPropagation(); handleSave(videoWrapper, videoData); });
                 videoWrapper.querySelector('.comment-btn').addEventListener('click', (e) => { e.stopPropagation(); openComments(videoData.id); });
@@ -322,18 +360,17 @@
                 });
                 
                 updateFollowButton(videoWrapper, videoData.userId);
-
                 return videoWrapper;
             }
             
             function renderVideoFeed() {
                 const videoContainer = document.getElementById('video-container');
-                videoContainer.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>'; // Clear with loading
+                videoContainer.innerHTML = '<div class="loading-indicator"><div class="spinner"></div></div>';
                 if (videos.length === 0) {
                     videoContainer.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="fas fa-video-slash"></i></div><div class="empty-state-text">Пока нет видео. Загрузите первое!</div></div>`;
                     return;
                 }
-                videoContainer.innerHTML = ''; // Clear loading
+                videoContainer.innerHTML = '';
                 const prevIndex = (currentVideoIndex - 1 + videos.length) % videos.length;
                 const nextIndex = (currentVideoIndex + 1) % videos.length;
                 videoContainer.append(createVideoElement(videos[prevIndex], 'prev'), createVideoElement(videos[currentVideoIndex], 'active'), createVideoElement(videos[nextIndex], 'next'));
@@ -350,20 +387,17 @@
                         loadingIndicator.style.display = 'none';
                         activeVideo.play().catch(e => console.error("Play error:", e));
                     };
-                    activeVideo.load(); // Ensure video starts loading
+                    activeVideo.load();
                 }
             }
 
             function navigateVideo(direction) {
                 if (isSwiping || videos.length <= 1) return;
                 isSwiping = true;
-                
                 currentVideoIndex = (currentVideoIndex + direction + videos.length) % videos.length;
-                
                 renderVideoFeed(); 
-                
                 tg.HapticFeedback.impactOccurred('light');
-                setTimeout(() => { isSwiping = false; }, 400); // Match transition duration
+                setTimeout(() => { isSwiping = false; }, 400);
             }
 
             function createGridItem(video) {
@@ -404,8 +438,8 @@
                 
                 const profileHTML = `
                     <div class="profile-header">
-                        <div class="profile-avatar">${(profile.first_name.charAt(0) + (profile.last_name?.charAt(0) || '')).toUpperCase()}</div>
-                        <div class="profile-name">${profile.first_name} ${profile.last_name || ''}</div>
+                        <div class="profile-avatar">${(profile.first_name || 'U').charAt(0).toUpperCase()}</div>
+                        <div class="profile-name">${profile.first_name || ''} ${profile.last_name || ''}</div>
                         <div class="profile-username">@${profile.username}</div>
                         <div class="profile-stats">
                             <div class="profile-stat"><div class="stat-value">${stats.following}</div><div class="stat-label">Подписки</div></div>
@@ -434,8 +468,6 @@
                 }
                 
                 page.querySelector(`#${pageId}-tabs`).addEventListener('click', (e) => handleTabClick(e, profileId, pageId));
-                
-                // Load initial tab content
                 handleTabClick({ target: page.querySelector('.tab.active') }, profileId, pageId);
             }
 
@@ -484,10 +516,6 @@
                     navigateToPage('user-profile-page');
                 }
             }
-
-            // ===================================================================
-            // 5. Функции-обработчики действий пользователя
-            // ===================================================================
 
             async function handleLike(videoWrapper, videoData, fromDoubleTap = false) {
                 if (fromDoubleTap && videoData.isLiked) return;
@@ -557,7 +585,7 @@
                         const item = document.createElement('div');
                         item.className = 'comment-item';
                         item.innerHTML = `
-                            <div class="comment-avatar">${comment.profiles.username.charAt(0).toUpperCase()}</div>
+                            <div class="comment-avatar">${(comment.profiles.username || 'U').charAt(0).toUpperCase()}</div>
                             <div class="comment-content">
                                 <div class="username">@${comment.profiles.username}</div>
                                 <div class="text">${comment.text}</div>
@@ -588,7 +616,7 @@
                 const item = document.createElement('div');
                 item.className = 'comment-item';
                 item.innerHTML = `
-                    <div class="comment-avatar">${data.profiles.username.charAt(0).toUpperCase()}</div>
+                    <div class="comment-avatar">${(data.profiles.username || 'U').charAt(0).toUpperCase()}</div>
                     <div class="comment-content">
                         <div class="username">@${data.profiles.username}</div>
                         <div class="text">${data.text}</div>
@@ -616,14 +644,10 @@
                     tg.showAlert('Действие не удалось. Попробуйте снова.');
                     return;
                 }
-
-                // Обновляем кнопку в ленте видео, если она видима
                 const activeVideoWrapper = document.querySelector('.video-wrapper.active');
                 if (activeVideoWrapper && activeVideoWrapper.querySelector(`[data-user-id="${followedId}"]`)) {
                     await updateFollowButton(activeVideoWrapper, followedId);
                 }
-                
-                // Обновляем кнопку на странице профиля, если мы на ней
                 if (profilePage) {
                     await updateProfileFollowButton(profilePage, followedId);
                 }
@@ -669,12 +693,12 @@
                     videosToShow = data || [];
                     emptyText = "Вы еще не загрузили ни одного видео.";
                 } else if (content === 'liked-videos') {
-                    const { data, error } = await supabase.from('likes').select(`videos(*, profiles(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
+                    const { data, error } = await supabase.from('likes').select(`videos!inner(*, profiles!inner(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
                     if (error) console.error("Error fetching liked videos:", error);
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
                     emptyText = "Вам еще не понравилось ни одно видео.";
                 } else if (content === 'saved-videos') {
-                    const { data, error } = await supabase.from('saves').select(`videos(*, profiles(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
+                    const { data, error } = await supabase.from('saves').select(`videos!inner(*, profiles!inner(*))`).eq('user_id', profileId).order('created_at', { ascending: false });
                      if (error) console.error("Error fetching saved videos:", error);
                     videosToShow = data ? data.map(v => v.videos).filter(Boolean) : [];
                     emptyText = "Вы еще ничего не сохранили.";
@@ -687,10 +711,6 @@
 
                 renderGridContent(gridId, formattedVideos, emptyText);
             }
-
-            // ===================================================================
-            // 6. Логика загрузки, редактирования и других страниц
-            // ===================================================================
             
             document.getElementById('video-file-input').addEventListener('change', (event) => {
                 selectedFile = event.target.files[0];
@@ -730,8 +750,7 @@
 
                 if (uploadError) {
                     console.error('Upload error:', uploadError);
-                    // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
-                    tg.showAlert(`Ошибка загрузки: ${uploadError.message}`);
+                    tg.showAlert(`Ошибка загрузки файла: ${uploadError.message}. Проверьте права (Policies) для INSERT в бакете 'video' в Supabase.`);
                     resetBtn();
                     return;
                 }
@@ -748,8 +767,7 @@
 
                 if (dbError) {
                     console.error('Database error:', dbError);
-                     // ИСПРАВЛЕНО: Показываем пользователю детальную ошибку
-                    tg.showAlert(`Ошибка сохранения в БД: ${dbError.message}`);
+                    tg.showAlert(`Ошибка сохранения данных: ${dbError.message}. Проверьте права (RLS) для INSERT в таблице 'videos' в Supabase.`);
                     resetBtn();
                     return;
                 }
@@ -761,7 +779,7 @@
                 selectedFile = null;
                 resetBtn();
                 
-                await main(true); // forceRefresh = true
+                await main(true);
                 navigateToPage('home-page');
             });
             
@@ -820,10 +838,6 @@
                 const inboxContent = document.getElementById('inbox-content');
                 inboxContent.innerHTML = `<div class="empty-state"><div class="empty-state-icon"><i class="far fa-paper-plane"></i></div><div class="empty-state-text">Функционал чатов находится в разработке.</div></div>`;
             }
-
-            // ===================================================================
-            // 7. Инициализация приложения и обработчики событий
-            // ===================================================================
             
             document.querySelectorAll('.nav-button').forEach(button => {
                 if (button.classList.contains('create-nav-button')) {
