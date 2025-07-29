@@ -231,8 +231,6 @@
 
             // --- Bot Integration Details ---
             const BOT_USERNAME = 'trixsocialbot';
-            // It's good practice to get the app name from the bot info if available,
-            // but for now we can hardcode a simple name. This name is part of the URL.
             const MINI_APP_NAME = 'app'; 
 
             let videos = [];
@@ -242,7 +240,7 @@
             let selectedFile = null;
             let isInitialized = false;
             let userProfile = null;
-            let pageHistory = ['home-page']; // NEW: For navigation history
+            let pageHistory = ['home-page'];
 
             let mainButtonAction = () => {};
             const mainButtonClickHandler = () => {
@@ -551,23 +549,14 @@
                 }
             }
             
-            // REPLACED: Old navigation logic is removed and replaced with the functions below.
-
-            /**
-             * Handles all visual updates when changing a page.
-             * @param {string} pageId The ID of the page to show.
-             */
             function showPage(pageId) {
-                // Update active page class
                 document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
                 document.getElementById(pageId).classList.add('active');
 
-                // Update active nav button class
                 document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
                 const navButton = document.querySelector(`.nav-button[data-page="${pageId}"]`);
                 if (navButton) navButton.classList.add('active');
                 
-                // Manage bottom nav visibility
                 const bottomNav = document.querySelector('.bottom-nav');
                 if (['create-page', 'edit-profile-page', 'video-viewer-page'].includes(pageId)) {
                     bottomNav.style.display = 'none';
@@ -575,7 +564,6 @@
                     bottomNav.style.display = 'flex';
                 }
 
-                // Manage Back Button visibility based on page
                 const mainTabPages = ['home-page', 'discover-page', 'inbox-page', 'profile-page'];
                 if (mainTabPages.includes(pageId)) {
                     tg.BackButton.hide();
@@ -583,12 +571,10 @@
                     tg.BackButton.show();
                 }
                 
-                // Lazy load content for pages
                 if (pageId === 'discover-page' && document.getElementById('discover-content').innerHTML === '') populateDiscoverPage();
                 if (pageId === 'profile-page' && (!isInitialized || document.getElementById(pageId).innerHTML.trim() === '')) populateProfile(user.id);
                 if (pageId === 'inbox-page' && document.getElementById('inbox-content').querySelector('.empty-state')) populateInbox();
 
-                // Manage Main Button
                 tg.MainButton.hide();
                 mainButtonAction = () => {};
                 if (pageId === 'edit-profile-page') {
@@ -601,7 +587,6 @@
                     tg.MainButton.show();
                 }
                 
-                // Manage video playback
                 if (pageId === 'home-page') { 
                     playCurrentVideo(); 
                 } else { 
@@ -609,10 +594,6 @@
                 }
             }
 
-            /**
-             * Navigates forward to a new page and updates history.
-             * @param {string} pageId The ID of the page to navigate to.
-             */
             function navigateToPage(pageId) {
                 const currentPageId = pageHistory[pageHistory.length - 1];
                 if (pageId === currentPageId) return;
@@ -672,22 +653,16 @@
             
             function handleShare(videoData) {
                 const shareText = `Смотри крутое видео от @${videoData.username} в Guid!`;
-                // UPDATED: Using the correct bot username and app name for the share URL
                 const shareUrl = `https://t.me/${BOT_USERNAME}/${MINI_APP_NAME}?startapp=video${videoData.id}`;
-                
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-                
                 tg.openTelegramLink(telegramShareUrl);
                 tg.HapticFeedback.notificationOccurred('success');
             }
 
             function handleShareProfile(profile) {
                 const shareText = `Подписывайся на @${profile.username} в Guid!`;
-                // UPDATED: Using the correct bot username and app name for the share URL
                 const shareUrl = `https://t.me/${BOT_USERNAME}/${MINI_APP_NAME}?startapp=user${profile.id}`;
-                
                 const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
-                
                 tg.openTelegramLink(telegramShareUrl);
                 tg.HapticFeedback.notificationOccurred('success');
             }
@@ -855,58 +830,135 @@
                 event.target.value = null; 
             });
 
+            /**
+             * Compresses a video file using the canvas and MediaRecorder API.
+             * This reduces the file size by re-encoding the video, potentially at a lower resolution.
+             * @param {File} file The video file to compress.
+             * @returns {Promise<Blob>} A promise that resolves with the compressed video blob.
+             */
+            async function compressVideo(file) {
+                return new Promise((resolve, reject) => {
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.src = URL.createObjectURL(file);
+
+                    video.onloadedmetadata = () => {
+                        URL.revokeObjectURL(video.src); // Clean up the object URL
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // Cap resolution at 720p for significant size reduction
+                        const maxWidth = 720;
+                        const scale = video.videoWidth > maxWidth ? maxWidth / video.videoWidth : 1;
+                        canvas.width = video.videoWidth * scale;
+                        canvas.height = video.videoHeight * scale;
+
+                        const stream = canvas.captureStream();
+                        // Use webm for better compression, though mp4 might be more compatible
+                        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                        const chunks = [];
+
+                        recorder.ondataavailable = (e) => chunks.push(e.data);
+                        recorder.onstop = () => {
+                            const blob = new Blob(chunks, { type: 'video/webm' });
+                            resolve(blob);
+                        };
+
+                        let frameCount = 0;
+                        const duration = video.duration;
+                        video.currentTime = 0;
+
+                        const drawFrame = async () => {
+                            if (video.currentTime < duration) {
+                                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                                // Seek to the next frame
+                                video.currentTime += 1 / 30; // Assuming 30fps
+                                await new Promise(r => video.onseeked = r);
+                                requestAnimationFrame(drawFrame);
+                            } else {
+                                recorder.stop();
+                            }
+                        };
+                        
+                        video.onseeked = drawFrame;
+                        // Start the process
+                        video.currentTime = 1 / 30;
+                    };
+
+                    video.onerror = (e) => {
+                        reject("Не удалось загрузить видео для сжатия.");
+                    };
+                });
+            }
+
+
             document.getElementById('publish-video-btn').addEventListener('click', async () => {
                 if (!selectedFile) {
                     tg.showAlert('Пожалуйста, выберите файл для загрузки.');
                     return;
                 }
-                tg.MainButton.showProgress();
-                const description = document.getElementById('video-description').value.trim();
-                const discipline = document.getElementById('video-discipline').value;
-                const style = document.getElementById('video-style').value;
-                
-                const fileName = `${user.id}/${Date.now()}-${selectedFile.name}`;
-                
-                const { error: uploadError } = await supabase.storage
-                    .from('video')
-                    .upload(fileName, selectedFile);
 
-                if (uploadError) {
-                    console.error('Upload error:', uploadError);
-                    tg.showAlert(`Ошибка загрузки файла: ${uploadError.message}.`);
+                tg.MainButton.setText('Подготовка видео...');
+                tg.MainButton.showProgress();
+
+                try {
+                    const compressedBlob = await compressVideo(selectedFile);
+                    
+                    const originalFileName = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.'));
+                    const newFileName = `${originalFileName}.webm`;
+                    const compressedFile = new File([compressedBlob], newFileName, { type: 'video/webm' });
+
+                    console.log(`Original size: ${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`);
+                    console.log(`Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`);
+
+                    tg.MainButton.setText('Загрузка...');
+
+                    const description = document.getElementById('video-description').value.trim();
+                    const discipline = document.getElementById('video-discipline').value;
+                    const style = document.getElementById('video-style').value;
+                    
+                    const fileNameForSupabase = `${user.id}/${Date.now()}-${compressedFile.name}`;
+                    
+                    const { error: uploadError } = await supabase.storage
+                        .from('video')
+                        .upload(fileNameForSupabase, compressedFile);
+
+                    if (uploadError) {
+                        throw uploadError;
+                    }
+                    
+                    const { data: publicUrlData } = supabase.storage.from('video').getPublicUrl(fileNameForSupabase);
+                    
+                    const { error: dbError } = await supabase.from('videos').insert({
+                        user_id: user.id,
+                        description: description,
+                        video_url: publicUrlData.publicUrl,
+                        discipline: discipline,
+                        style: style
+                    });
+
+                    if (dbError) {
+                        throw dbError;
+                    }
+
+                    tg.MainButton.hideProgress();
+                    tg.HapticFeedback.notificationOccurred('success');
+                    tg.showAlert('Успех! Ваше видео опубликовано.');
+                    
+                    document.getElementById('upload-form').style.display = 'none';
+                    document.getElementById('video-description').value = '';
+                    selectedFile = null;
+                    
+                    await main(true);
+                    navigateToPage('home-page');
+
+                } catch (error) {
+                    console.error('Upload process error:', error);
+                    tg.showAlert(`Ошибка публикации: ${error.message}.`);
                     tg.HapticFeedback.notificationOccurred('error');
                     tg.MainButton.hideProgress();
-                    return;
+                    tg.MainButton.setText('Опубликовать');
                 }
-                
-                const { data: publicUrlData } = supabase.storage.from('video').getPublicUrl(fileName);
-                
-                const { error: dbError } = await supabase.from('videos').insert({
-                    user_id: user.id,
-                    description: description,
-                    video_url: publicUrlData.publicUrl,
-                    discipline: discipline,
-                    style: style
-                });
-
-                tg.MainButton.hideProgress();
-
-                if (dbError) {
-                    console.error('Database error:', dbError);
-                    tg.showAlert(`Ошибка сохранения данных: ${dbError.message}.`);
-                    tg.HapticFeedback.notificationOccurred('error');
-                    return;
-                }
-                
-                tg.HapticFeedback.notificationOccurred('success');
-                tg.showAlert('Успех! Ваше видео опубликовано.');
-                
-                document.getElementById('upload-form').style.display = 'none';
-                document.getElementById('video-description').value = '';
-                selectedFile = null;
-                
-                await main(true);
-                navigateToPage('home-page');
             });
             
             async function openEditProfile() {
@@ -970,13 +1022,11 @@
                 }
             });
 
-            // REPLACED: Old BackButton handler is replaced with a new one that uses history.
             tg.BackButton.onClick(() => {
-                // Ensure there's a page to go back to
                 if (pageHistory.length > 1) {
-                    pageHistory.pop(); // Remove the current page
+                    pageHistory.pop(); 
                     const previousPageId = pageHistory[pageHistory.length - 1];
-                    showPage(previousPageId); // Show the previous page without adding to history
+                    showPage(previousPageId);
                 }
             });
             
@@ -1009,9 +1059,6 @@
                 userProfile = await upsertUserProfile();
 
                 if (!userProfile.discipline) {
-                    // Assuming startOnboarding function exists somewhere
-                    // startOnboarding(); 
-                    // For now, let's proceed to the main app if it doesn't exist.
                      if (forceRefresh || videos.length === 0) {
                         videos = await fetchVideos();
                     }
@@ -1027,7 +1074,6 @@
                     populateProfile(user.id);
                     isInitialized = true;
                 }
-                 // Initial page setup
                 showPage(pageHistory[pageHistory.length-1]);
             }
 
@@ -1051,4 +1097,4 @@
         });
     </script>
 </body>
-</ht
+</html>
