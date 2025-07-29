@@ -242,6 +242,14 @@
             };
             tg.MainButton.onClick(mainButtonClickHandler);
 
+            // Данные для анкеты и фильтров
+            const disciplines = {
+                'Ролики': ['Агрессив', 'Слалом', 'Фрискейт', 'Спидскейтинг', 'Даунхилл', 'Арт-скейтинг'],
+                'Скейт': ['Стрит', 'Парк', 'Верт', 'Лонгборд', 'Круизинг', 'Даунхилл'],
+                'BMX': ['Стрит', 'Парк', 'Дерт', 'Верт', 'Флэтленд', 'Рейсинг']
+            };
+            // Этот список городов нужно будет значительно расширить
+            const cities = ['Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону', 'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград', 'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'];
 
             async function upsertUserProfile() {
                 const { data, error } = await supabase.from('profiles').upsert({
@@ -257,7 +265,7 @@
 
             async function fetchVideos(filters = {}) {
                 let query = supabase.from('videos').select(`
-                    id, video_url, description, user_id,
+                    id, video_url, description, user_id, discipline, style,
                     profiles!videos_user_id_fkey( id, username, first_name, last_name, city ),
                     likes ( user_id ),
                     saves ( user_id ),
@@ -552,7 +560,7 @@
                 const isHomePage = activePage.id === 'home-page';
 
                 const bottomNav = document.querySelector('.bottom-nav');
-                if (['create-page', 'edit-profile-page', 'video-viewer-page'].includes(pageId)) {
+                if (['create-page', 'edit-profile-page', 'video-viewer-page', 'onboarding-page'].includes(pageId)) {
                     bottomNav.style.display = 'none';
                 } else {
                     bottomNav.style.display = 'flex';
@@ -982,6 +990,76 @@
                     isInitialized = true;
                 }
             }
+
+            // --- НОВАЯ ЛОГИКА АНКЕТЫ ---
+            function startOnboarding() {
+                navigateToPage('onboarding-page');
+            }
+
+            function populateStyleOptions(discipline) {
+                const styleOptionsContainer = document.getElementById('style-options');
+                styleOptionsContainer.innerHTML = '';
+                const styles = disciplines[discipline] || [];
+                styles.forEach(style => {
+                    const option = document.createElement('div');
+                    option.className = 'onboarding-option';
+                    option.textContent = style;
+                    option.dataset.style = style;
+                    option.addEventListener('click', () => {
+                        userProfile.style = style;
+                        document.getElementById('onboarding-step-2').classList.remove('active');
+                        populateCityList();
+                        document.getElementById('onboarding-step-3').classList.add('active');
+                    });
+                    styleOptionsContainer.appendChild(option);
+                });
+            }
+
+            function populateCityList(filter = '') {
+                const cityListContainer = document.getElementById('city-list');
+                cityListContainer.innerHTML = '';
+                const filteredCities = cities.filter(city => city.toLowerCase().includes(filter.toLowerCase()));
+
+                filteredCities.forEach(city => {
+                    const item = document.createElement('div');
+                    item.className = 'city-item';
+                    item.textContent = city;
+                    item.addEventListener('click', async () => {
+                        userProfile.city = city;
+                        const { error } = await supabase.from('profiles').update({
+                            discipline: userProfile.discipline,
+                            style: userProfile.style,
+                            city: userProfile.city
+                        }).eq('id', user.id);
+
+                        if (error) {
+                            console.error('Error saving onboarding data:', error);
+                            tg.showAlert('Не удалось сохранить данные. Попробуйте снова.');
+                            tg.HapticFeedback.notificationOccurred('error');
+                        } else {
+                            tg.HapticFeedback.notificationOccurred('success');
+                            await main(true);
+                            navigateToPage('home-page');
+                        }
+                    });
+                    cityListContainer.appendChild(item);
+                });
+            }
+
+            document.querySelectorAll('#onboarding-step-1 .onboarding-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    const discipline = option.dataset.discipline;
+                    userProfile.discipline = discipline;
+                    document.getElementById('onboarding-step-1').classList.remove('active');
+                    populateStyleOptions(discipline);
+                    document.getElementById('onboarding-step-2').classList.add('active');
+                });
+            });
+
+            document.getElementById('city-search').addEventListener('input', (e) => {
+                populateCityList(e.target.value);
+            });
+            // --- КОНЕЦ ЛОГИКИ АНКЕТЫ ---
 
             main();
 
