@@ -8,583 +8,1013 @@
 
     <!-- Telegram WebApp API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Supabase Client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         :root {
-            --bg-color: var(--tg-theme-bg-color, #18222d);
+            /* Цвета из темы Telegram */
+            --bg-color: var(--tg-theme-bg-color, #121212);
             --text-color: var(--tg-theme-text-color, #ffffff);
-            --hint-color: var(--tg-theme-hint-color, #b1c3d5);
-            --link-color: var(--tg-theme-link-color, #62a8ea);
-            --button-color: var(--tg-theme-button-color, #3c8fdf);
+            --hint-color: var(--tg-theme-hint-color, #aaaaaa);
+            --link-color: var(--tg-theme-link-color, #8774e1);
+            --button-color: var(--tg-theme-button-color, #8774e1);
             --button-text-color: var(--tg-theme-button-text-color, #ffffff);
-            --secondary-bg-color: var(--tg-theme-secondary-bg-color, #232e3c);
-            --header-bg-color: var(--tg-theme-header-bg-color, #18222d);
-            --section-bg-color: var(--tg-theme-section-bg-color, #232e3c);
-            --destructive-text-color: var(--tg-theme-destructive-text-color, #ff4d4d);
-            --success-color: #34C759;
+            --secondary-bg-color: var(--tg-theme-secondary-bg-color, #1c1c1d);
+            --header-bg-color: var(--tg-theme-header-bg-color, #1c1c1d);
+            --section-bg-color: var(--tg-theme-section-bg-color, #2c2c2e);
+            --destructive-text-color: var(--tg-theme-destructive-text-color, #ff453a);
+            
+            /* Дополнительные цвета */
+            --success-color: #32d74b;
+            --warning-color: #ff9f0a;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --link-color-rgb: 135, 116, 225; /* Дефолтное значение для --tg-theme-link-color-rgb */
+            
+            --border-radius-m: 12px;
+            --border-radius-l: 16px;
         }
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             -webkit-font-smoothing: antialiased;
-            padding-bottom: 70px;
+            -moz-osx-font-smoothing: grayscale;
+            padding-bottom: 80px; /* Запас под навигацию */
+            overscroll-behavior-y: none; /* Убирает "оттягивание" страницы на iOS */
         }
 
         /* --- ОБЩИЕ КОМПОНЕНТЫ --- */
         #loader {
-            position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            background-color: var(--bg-color); z-index: 100; transition: opacity 0.3s;
+            position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-color); z-index: 1000; transition: opacity 0.3s, visibility 0.3s;
         }
         .spinner {
-            width: 48px; height: 48px; border: 3px solid var(--hint-color);
+            width: 48px; height: 48px; border: 4px solid var(--secondary-bg-color);
             border-top-color: var(--button-color); border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-        #loader p { margin-top: 10px; color: var(--hint-color); }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         #app { display: none; flex-direction: column; min-height: 100vh; }
         
-        .tab-content { display: none; padding: 8px; animation: fadeIn 0.4s ease; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .page-content { display: none; padding: 12px; animation: fadeIn 0.4s ease-out; }
+        .page-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
+        /* Нижняя навигация */
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
             background-color: var(--header-bg-color);
             border-top: 1px solid var(--secondary-bg-color);
-            display: flex; justify-content: space-around; padding: 4px 0; z-index: 50;
+            display: flex; justify-content: space-around; padding: 8px 0; z-index: 50;
+            box-shadow: 0 -2px 10px var(--shadow-color);
         }
         .nav-item {
             background: none; border: none; color: var(--hint-color);
             display: flex; flex-direction: column; align-items: center;
-            gap: 2px; padding: 8px 12px; font-size: 10px; font-weight: 500;
-            border-radius: 8px; transition: color 0.2s; cursor: pointer;
+            gap: 4px; padding: 4px 12px; font-size: 11px; font-weight: 500;
+            border-radius: var(--border-radius-m); transition: color 0.2s, transform 0.2s; cursor: pointer;
         }
+        .nav-item:active { transform: scale(0.95); }
         .nav-item.active { color: var(--link-color); }
-        .nav-item svg { width: 26px; height: 26px; }
-
+        .nav-item i { width: 24px; height: 24px; }
+        
+        /* Кнопки */
         .btn {
             width: 100%; display: flex; align-items: center; justify-content: center;
-            gap: 10px; padding: 14px; border: none; border-radius: 8px;
+            gap: 10px; padding: 14px; border: none; border-radius: var(--border-radius-m);
             background-color: var(--button-color); color: var(--button-text-color);
-            font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+            font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s;
         }
-        .btn:hover { opacity: 0.9; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:active { transform: scale(0.98); }
+        .btn-secondary { background-color: var(--section-bg-color); color: var(--text-color); }
+        .btn-success { background-color: var(--success-color); }
+        .btn-danger { background-color: var(--destructive-text-color); }
+        .btn[disabled] { opacity: 0.5; cursor: not-allowed; transform: none !important; filter: none; }
 
+        /* Карточки */
         .card {
-            background-color: var(--section-bg-color);
-            border-radius: 12px;
-            margin: 16px auto;
-            max-width: 400px;
+            background-color: var(--secondary-bg-color);
+            border-radius: var(--border-radius-l);
+            margin: 8px auto 16px;
+            max-width: 420px;
             width: 100%;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--hint-color);
+        }
+        .empty-state i { width: 48px; height: 48px; margin-bottom: 16px; }
+        .empty-state-title { font-size: 18px; font-weight: 600; color: var(--text-color); margin-bottom: 8px; }
+        .empty-state-text { font-size: 14px; }
 
         /* --- ЛЕНТА И ПРОФИЛЬ --- */
-        .video-card {
-            background-color: var(--section-bg-color); border-radius: 12px;
-            margin: 16px auto; overflow: hidden; max-width: 400px; width: 100%;
-        }
         .video-author {
-            display: flex; align-items: center; gap: 10px;
+            display: flex; align-items: center; gap: 12px;
             padding: 12px 16px; cursor: pointer;
         }
         .author-avatar {
-            width: 36px; height: 36px; border-radius: 50%;
+            width: 40px; height: 40px; border-radius: 50%;
             background-color: var(--hint-color); color: var(--bg-color);
             display: flex; align-items: center; justify-content: center; font-weight: 600;
-            background-size: cover; background-position: center;
+            flex-shrink: 0;
         }
-        .author-name { font-weight: 600; font-size: 15px; }
+        .author-name { font-weight: 600; font-size: 16px; }
         .video-player {
             width: 100%; aspect-ratio: 9 / 16; background-color: #000;
             display: flex; align-items: center; justify-content: center;
             font-weight: 600; color: rgba(255, 255, 255, 0.7);
         }
-        .video-player video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
         .video-info { padding: 12px 16px; }
-        .video-title { font-weight: 600; font-size: 16px; line-height: 1.3; margin-bottom: 8px; }
+        .video-title { font-weight: 600; font-size: 16px; line-height: 1.4; margin-bottom: 12px; }
         .video-footer { display: flex; justify-content: space-between; align-items: center; }
-        .video-meta { font-size: 13px; color: var(--hint-color); }
+        .video-meta { font-size: 14px; color: var(--hint-color); }
         .video-actions { display: flex; align-items: center; gap: 16px; }
         .action-btn {
             background: none; border: none; color: var(--hint-color);
-            display: flex; align-items: center; gap: 5px; font-size: 14px;
-            font-weight: 500; padding: 4px; transition: color 0.2s; cursor: pointer;
+            display: flex; align-items: center; gap: 6px; font-size: 14px;
+            font-weight: 500; padding: 4px; transition: color 0.2s, transform 0.2s; cursor: pointer;
         }
+        .action-btn:active { transform: scale(0.9); }
         .action-btn.liked { color: var(--destructive-text-color); }
-        .action-btn svg { width: 22px; height: 22px; }
+        .action-btn.liked i { fill: var(--destructive-text-color); }
+        .action-btn i { width: 24px; height: 24px; transition: all 0.2s; }
 
         .profile-card { padding: 24px; text-align: center; }
         .profile-avatar {
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 90px; height: 90px; border-radius: 50%;
             background-image: linear-gradient(135deg, var(--link-color), var(--button-color));
             display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 32px; color: var(--button-text-color);
+            font-weight: 700; font-size: 36px; color: var(--button-text-color);
             margin: 0 auto 16px;
-            background-size: cover; background-position: center;
+            box-shadow: 0 4px 15px rgba(var(--link-color-rgb), 0.4);
         }
-        .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 24px; }
+        .profile-name { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
         .profile-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        .stat-item .value { font-size: 20px; font-weight: 600; }
-        .stat-item .label { font-size: 13px; color: var(--hint-color); }
+        .stat-item .value { font-size: 22px; font-weight: 600; }
+        .stat-item .label { font-size: 14px; color: var(--hint-color); }
         .profile-videos-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 16px 0 0;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px;
         }
         .profile-video-item {
             aspect-ratio: 9 / 16; background-color: var(--section-bg-color);
-            border-radius: 4px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--hint-color); font-size: 12px; text-align: center; padding: 4px;
         }
 
-        /* --- СПИСОК ПОЛЬЗОВАТЕЛЕЙ --- */
-        .user-list-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 10px 16px; cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .user-list-item:hover { background-color: rgba(255,255,255,0.05); }
-        .user-avatar {
-            width: 40px; height: 40px; border-radius: 50%;
-            background-color: var(--hint-color); color: var(--bg-color);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 600; flex-shrink: 0;
-            background-size: cover; background-position: center;
-        }
-        .user-name { font-weight: 600; }
+        /* --- ТУРНИРЫ --- */
+        .tournament-card { padding: 16px; cursor: pointer; transition: background-color 0.2s; }
+        .tournament-card:hover { background-color: rgba(255,255,255,0.05); }
+        .tournament-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .tournament-card-header .title { font-size: 18px; font-weight: 600; }
+        .tournament-card-header .status { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 16px; text-transform: uppercase; }
+        .status-active { background-color: var(--success-color); color: white; }
+        .status-upcoming { background-color: var(--warning-color); color: white; }
+        .status-finished { background-color: var(--secondary-bg-color); color: var(--hint-color); }
+        .tournament-card-body { font-size: 14px; color: var(--hint-color); }
         
-        /* --- МОДАЛЬНОЕ ОКНО КОММЕНТАРИЕВ --- */
+        .page-header { padding: 0 4px 12px; font-size: 24px; font-weight: 800; }
+        
+        .etalon-video-wrapper { padding: 16px; border-bottom: 1px solid var(--secondary-bg-color); }
+        .etalon-video-wrapper h3 { margin-bottom: 12px; font-size: 16px; color: var(--hint-color); text-align: center; font-weight: 500;}
+        .etalon-player { width: 100%; max-width: 300px; margin: 0 auto; aspect-ratio: 9 / 16; background-color: #000; border-radius: var(--border-radius-m); display: flex; align-items: center; justify-content: center; }
+        
+        .participants-list h3 { padding: 16px 16px 8px; font-size: 16px; color: var(--hint-color); font-weight: 500;}
+        .participant-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; transition: background-color 0.2s; }
+        .participant-item.is-turn { background-color: rgba(var(--link-color-rgb), 0.15); border-left: 4px solid var(--link-color); padding-left: 12px;}
+        .participant-avatar { width: 44px; height: 44px; border-radius: 50%; background-color: var(--hint-color); color: var(--bg-color); display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
+        .participant-info { flex-grow: 1; }
+        .participant-name { font-weight: 600; }
+        .participant-status { font-size: 13px; color: var(--hint-color); }
+        .loh-status { font-size: 20px; font-weight: 700; letter-spacing: 3px; color: var(--destructive-text-color); }
+        
+        .tournament-actions { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .tournament-info-text { text-align:center; color: var(--hint-color); padding: 24px 16px; }
+
+        /* Формы */
+        .form-container { padding: 16px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: var(--hint-color); font-size: 14px; font-weight: 500; }
+        .form-group input, .search-input { 
+            width: 100%; padding: 14px; border: 1px solid var(--secondary-bg-color); 
+            background-color: var(--bg-color); border-radius: var(--border-radius-m); 
+            color: var(--text-color); font-size: 16px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-group input:focus, .search-input:focus {
+            outline: none; border-color: var(--link-color);
+            box-shadow: 0 0 0 3px rgba(var(--link-color-rgb), 0.3);
+        }
+        .search-input-wrapper { position: relative; margin-bottom: 16px; }
+        .search-input-wrapper i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--hint-color); }
+        .search-input { padding-left: 44px; }
+
+        /* --- MODAL --- */
         .modal-overlay {
-            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); z-index: 100;
-            display: flex; align-items: flex-end; opacity: 0; visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none; /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 16px;
+            backdrop-filter: blur(4px);
         }
-        .modal-overlay.active { opacity: 1; visibility: visible; }
-        .modal-panel {
-            width: 100%; height: 75vh; background-color: var(--secondary-bg-color);
-            border-radius: 16px 16px 0 0; transform: translateY(100%);
-            transition: transform 0.3s ease-out; display: flex; flex-direction: column;
+        .modal-overlay.visible {
+            display: flex;
         }
-        .modal-overlay.active .modal-panel { transform: translateY(0); }
-        .modal-header { padding: 12px; text-align: center; cursor: grab; }
-        .modal-handle { width: 40px; height: 4px; background-color: var(--hint-color); border-radius: 2px; margin: 0 auto; }
-        .modal-body { flex-grow: 1; overflow-y: auto; padding: 0 16px 16px; }
-        .comment-item { display: flex; gap: 12px; margin-bottom: 16px; }
-        .comment-avatar {
-            width: 36px; height: 36px; border-radius: 50%; background-color: var(--hint-color);
-            color: var(--bg-color); display: flex; align-items: center; justify-content: center;
-            font-weight: 600; flex-shrink: 0;
-            background-size: cover; background-position: center;
+        .modal-box {
+            background-color: var(--section-bg-color);
+            border-radius: var(--border-radius-l);
+            padding: 24px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 8px 24px var(--shadow-color);
+            animation: modal-fade-in 0.3s ease-out;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
         }
-        .comment-content .author { font-weight: 600; }
-        .comment-content .text { font-size: 15px; line-height: 1.4; }
-        .modal-footer {
-            display: flex; align-items: center; gap: 8px; padding: 8px 16px;
-            border-top: 1px solid var(--section-bg-color); background-color: var(--secondary-bg-color);
+        @keyframes modal-fade-in {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
         }
-        .modal-footer input {
-            flex-grow: 1; padding: 10px 14px; border: none;
-            background-color: var(--bg-color); border-radius: 18px;
-            color: var(--text-color); font-size: 15px;
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
         }
-        .modal-footer input:focus { outline: none; }
-        .modal-footer button {
-            background-color: var(--button-color); border: none; width: 36px; height: 36px;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; color: var(--button-text-color);
+        .modal-text {
+            font-size: 15px;
+            color: var(--hint-color);
+            line-height: 1.5;
+            margin-bottom: 24px;
         }
+        .modal-content {
+             overflow-y: auto;
+             margin-bottom: 24px;
+        }
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: auto;
+        }
+        .comment-item {
+            display: flex;
+            gap: 12px;
+            text-align: left;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--secondary-bg-color);
+        }
+        .comment-item:last-child { border-bottom: none; }
+        .comment-body { display: flex; flex-direction: column; }
+        .comment-author { font-weight: 600; }
+        .comment-text { color: var(--hint-color); }
+        
+        /* --- TOAST --- */
+        #toast-container {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--section-bg-color);
+            color: var(--text-color);
+            padding: 12px 16px;
+            border-radius: var(--border-radius-m);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            animation: toast-in 0.5s ease;
+            pointer-events: all;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast.hiding {
+            animation: toast-out 0.5s ease;
+        }
+        @keyframes toast-out {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(20px); }
+        }
+        .toast i {
+            width: 20px;
+            height: 20px;
+        }
+        .toast .success { color: var(--success-color); }
+        .toast .error { color: var(--destructive-text-color); }
 
     </style>
 </head>
 <body>
 
-    <div id="loader">
-        <div class="spinner"></div>
-        <p>Подключение...</p>
-    </div>
+    <div id="loader"><div class="spinner"></div></div>
 
     <div id="app">
-        <main>
-            <div id="videoFeed" class="tab-content"></div>
-            <div id="tournaments" class="tab-content"></div>
-            <div id="users" class="tab-content"></div>
-            <div id="profile" class="tab-content"></div>
-        </main>
+        <main id="main-content"></main>
         <nav id="bottom-nav" class="bottom-nav"></nav>
     </div>
 
-    <div id="comments-modal" class="modal-overlay">
-        <!-- ... -->
+    <!-- Modal HTML Structure -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div id="modal-box" class="modal-box">
+            <h3 id="modal-title" class="modal-title"></h3>
+            <div id="modal-content">
+                <p id="modal-text" class="modal-text"></p>
+            </div>
+            <div id="modal-buttons" class="modal-buttons"></div>
+        </div>
     </div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const tg = window.Telegram.WebApp;
+    document.addEventListener('DOMContentLoaded', () => {
+        const tg = window.Telegram.WebApp;
 
-            const App = {
-                $: (selector) => document.querySelector(selector),
-                $$: (selector) => document.querySelectorAll(selector),
-                
-                supabaseUrl: 'https://cibytrescwntdgxqjpfm.supabase.co',
-                supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpYnl0cmVzY3dudGRneHFqcGZtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5MDM3MjYsImV4cCI6MjA2NDQ3OTcyNn0.Y1Z24F0OCKOzGG46zE0UNe-kAvVpq9-Mg_wVkw9F1-E',
-                supabase: null,
-                videoObserver: null,
+        // --- Утилиты ---
+        const $ = (selector) => document.querySelector(selector);
+        const $$ = (selector) => document.querySelectorAll(selector);
+        const escapeHTML = (str) => str ? str.replace(/[&<>"']/g, (match) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[match])) : '';
 
-                state: {
-                    currentUser: null,
-                    activeTab: 'videoFeed',
-                    previousTab: 'videoFeed',
-                    viewingProfileId: null,
+        // --- Сервис для работы с данными (симуляция бэкенда) ---
+        const DBService = {
+            users: {
+                'user1': { id: 'user1', name: 'You', avatar: 'Y', followers: 1200, videos: 9 },
+                'user2': { id: 'user2', name: 'skater_pro', avatar: 'S', followers: 5400, videos: 25 },
+                'user3': { id: 'user3', name: 'trick_master', avatar: 'T', followers: 2100, videos: 15 },
+                'user4': { id: 'user4', name: 'roller_girl', avatar: 'R', followers: 8900, videos: 42 },
+            },
+            videos: [
+                { id: 'v1', userId: 'user2', title: 'Kickflip вариация', views: 2100, likes: 234, isLiked: false, comments: [{userId: 'user3', text: 'Круто!'}] },
+                { id: 'v2', userId: 'user3', title: '360 flip в парке', views: 1800, likes: 189, isLiked: true, comments: [] },
+                { id: 'v3', userId: 'user1', title: 'Мой первый трюк!', views: 500, likes: 56, isLiked: false, comments: [{userId: 'user2', text: 'Хорошее начало!'}] },
+                { id: 'v4', userId: 'user4', title: 'Grind on rail', views: 12500, likes: 1200, isLiked: false, comments: [{userId: 'user1', text: 'Вау!'}, {userId: 'user2', text: 'Невероятно!'}] },
+                { id: 'v5', userId: 'user2', title: 'Manual combo', views: 3200, likes: 450, isLiked: false, comments: [] },
+                { id: 'v6', userId: 'user4', title: 'Backflip', views: 25000, likes: 2300, isLiked: true, comments: [] },
+            ],
+            tournaments: [
+                {
+                    id: 't1', name: 'Game of L.O.H.', creatorId: 'user2',
+                    startTime: new Date(Date.now() - 3600 * 1000).toISOString(), status: 'active',
+                    etalonVideo: 'Kickflip', currentTurnIndex: 1, needsJudging: false,
+                    participants: [
+                        { ...users['user2'], loh: '' },
+                        { ...users['user1'], loh: 'L' },
+                        { ...users['user3'], loh: 'LO' },
+                    ]
                 },
-
-                // --- Инициализация ---
-                async init() {
-                    try {
-                        this.supabase = supabase.createClient(this.supabaseUrl, this.supabaseKey);
-                        
-                        await this.authenticateUser();
-                        
-                        tg.ready();
-                        tg.expand();
-                        tg.BackButton.onClick(() => this.handleBackButtonClick());
-                        
-                        this.applyTheme(tg.themeParams);
-                        tg.onEvent('themeChanged', (params) => this.applyTheme(params));
-                        
-                        this.setupVideoObserver();
-                        this.render.nav();
-                        await this.render.currentView();
-                        this.setupEventListeners();
-                        
-                        this.$('#loader').style.display = 'none';
-                        this.$('#app').style.display = 'flex';
-                    } catch (error) {
-                        console.error("Initialization failed:", error);
-                        this.$('#loader p').textContent = `Ошибка: ${error.message}`;
-                    }
-                },
-
-                async authenticateUser() {
-                    const tgUser = tg.initDataUnsafe?.user;
-                    
-                    if (!tgUser) {
-                        this.$('#loader p').textContent = 'Вход в демо-режим...';
-                        console.log("Telegram user not found. Running in Demo Mode.");
-                        this.state.currentUser = {
-                            id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
-                            telegram_id: '12345678',
-                            first_name: 'Демо',
-                            avatar_url: null,
-                            followers_count: 42,
-                        };
-                        return;
-                    }
-
-                    this.$('#loader p').textContent = 'Аутентификация...';
-                    let { data: profile, error } = await this.supabase
-                        .from('profiles')
-                        .select('*')
-                        .eq('telegram_id', String(tgUser.id))
-                        .single();
-
-                    if (error && error.code === 'PGRST116') { // Not found
-                        const { data: newProfile, error: insertError } = await this.supabase
-                            .from('profiles')
-                            .insert({
-                                telegram_id: String(tgUser.id),
-                                telegram_username: tgUser.username,
-                                first_name: tgUser.first_name,
-                                last_name: tgUser.last_name,
-                                avatar_url: tgUser.photo_url,
-                            })
-                            .select()
-                            .single();
-                        if (insertError) throw insertError;
-                        profile = newProfile;
-                    } else if (error) {
-                        throw error;
-                    }
-                    
-                    this.state.currentUser = profile;
-                },
-
-                // --- Методы рендеринга ---
-                render: {
-                    async currentView() {
-                        const { activeTab, viewingProfileId } = App.state;
-                        
-                        // Отключаем наблюдение за старыми видео перед ререндером
-                        if (App.videoObserver) {
-                            App.$$('video').forEach(video => App.videoObserver.unobserve(video));
-                        }
-                        
-                        App.$$('.tab-content').forEach(el => el.classList.toggle('active', el.id === activeTab));
-                        App.$$('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.tabId === activeTab));
-                        
-                        App.$(`#${activeTab}`).innerHTML = `<div class="spinner"></div>`;
-
-                        if (activeTab === 'videoFeed') await this.feed();
-                        if (activeTab === 'users') await this.usersList();
-                        if (activeTab === 'profile') await this.profileView();
-                        if (activeTab === 'tournaments') App.$('#tournaments').innerHTML = `<div class="card" style="padding: 24px; text-align: center; color: var(--hint-color);">Турниры в разработке</div>`;
-
-                        const shouldShowBack = (activeTab === 'profile' && viewingProfileId && viewingProfileId !== App.state.currentUser.id);
-                        if (shouldShowBack) tg.BackButton.show();
-                        else tg.BackButton.hide();
-                    },
-
-                    nav() {
-                        const navConfig = [
-                            { id: 'videoFeed', label: 'Лента', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>' },
-                            { id: 'tournaments', label: 'Турниры', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>' },
-                            { id: 'users', label: 'Люди', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
-                            { id: 'profile', label: 'Профиль', icon: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>' },
-                        ];
-                        App.$('#bottom-nav').innerHTML = navConfig.map(item => `<button class="nav-item" data-tab-id="${item.id}">${item.icon}<span>${item.label}</span></button>`).join('');
-                    },
-
-                    async feed() {
-                        const { data: videos, error } = await App.supabase.from('videos').select(`*, user:user_id(id, first_name, avatar_url)`).order('created_at', { ascending: false });
-                        if (error) return tg.showAlert(error.message);
-                        
-                        const videoIds = videos.map(v => v.id);
-                        const { data: likes, error: likesError } = await App.supabase.from('video_likes').select('video_id').eq('user_id', App.state.currentUser.id).in('video_id', videoIds);
-                        if(likesError) console.error("Likes fetch error:", likesError);
-                        const likedVideoIds = new Set(likes.map(l => l.video_id));
-
-                        App.$('#videoFeed').innerHTML = videos.map(video => {
-                            const author = video.user;
-                            const isLiked = likedVideoIds.has(video.id);
-                            const avatarStyle = author.avatar_url ? `background-image: url(${author.avatar_url})` : '';
-                            const avatarInitial = author.first_name ? author.first_name.charAt(0).toUpperCase() : '?';
-                            // Заглушки для видео
-                            const videoSources = [
-                                'https://videos.pexels.com/video-files/8132453/8132453-sd_540_960_30fps.mp4',
-                                'https://videos.pexels.com/video-files/4762953/4762953-sd_540_960_25fps.mp4',
-                                'https://videos.pexels.com/video-files/8004139/8004139-sd_540_960_25fps.mp4'
-                            ];
-                            const videoSrc = video.video_url || videoSources[Math.floor(Math.random() * videoSources.length)];
-
-                            return `
-                                <div class="video-card">
-                                    <div class="video-author" data-action="open-profile" data-user-id="${author.id}">
-                                        <div class="author-avatar" style="${avatarStyle}">${!author.avatar_url ? avatarInitial : ''}</div>
-                                        <span class="author-name">${author.first_name || 'User'}</span>
-                                    </div>
-                                    <div class="video-player">
-                                        <video src="${videoSrc}" playsinline autoplay muted loop preload="metadata"></video>
-                                    </div>
-                                    <div class="video-info">
-                                        <div class="video-footer">
-                                            <div class="video-meta"><span>👀 ${video.views_count || 0}</span></div>
-                                            <div class="video-actions">
-                                                <button class="action-btn ${isLiked ? 'liked' : ''}" data-action="like" data-video-id="${video.id}"><svg fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg><span class="count">${video.likes_count || 0}</span></button>
-                                                <button class="action-btn" data-action="comment" data-video-id="${video.id}"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg><span class="count">${video.comments_count || 0}</span></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                        
-                        // Запускаем наблюдение за новыми видео
-                        App.$$('#videoFeed video').forEach(video => App.videoObserver.observe(video));
-                    },
-                    
-                    async usersList() {
-                        const { data: users, error } = await App.supabase.from('profiles').select('*');
-                        if (error) return tg.showAlert(error.message);
-                        App.$('#users').innerHTML = `<div class="card">
-                            ${users.map(user => {
-                                const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url})` : '';
-                                const avatarInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
-                                return `
-                                <div class="user-list-item" data-action="open-profile" data-user-id="${user.id}">
-                                    <div class="user-avatar" style="${avatarStyle}">${!user.avatar_url ? avatarInitial : ''}</div>
-                                    <span class="user-name">${user.first_name || 'User'}</span>
-                                </div>
-                            `}).join('')}
-                        </div>`;
-                    },
-
-                    async profileView() {
-                        const userId = App.state.viewingProfileId || App.state.currentUser.id;
-                        
-                        const { data: user, error } = await App.supabase.from('profiles').select('*').eq('id', userId).single();
-                        if (error) { App.$('#profile').innerHTML = `<p>Ошибка загрузки профиля.</p>`; return tg.showAlert(error.message); }
-
-                        const { count, error: videosError } = await App.supabase.from('videos').select('*', { count: 'exact', head: true }).eq('user_id', userId);
-
-                        const avatarStyle = user.avatar_url ? `background-image: url(${user.avatar_url})` : '';
-                        const avatarInitial = user.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
-
-                        App.$('#profile').innerHTML = `
-                            <div class="card profile-card">
-                                <div class="profile-avatar" style="${avatarStyle}">${!user.avatar_url ? avatarInitial : ''}</div>
-                                <h2 class="profile-name">${user.first_name || 'User'}</h2>
-                                <div class="profile-stats">
-                                    <div class="stat-item"><div class="value">${count || 0}</div><div class="label">Видео</div></div>
-                                    <div class="stat-item"><div class="value">${user.followers_count || 0}</div><div class="label">Подписчики</div></div>
-                                </div>
-                            </div>
-                            <div class="profile-videos-grid">
-                                ${Array(count || 0).fill('<div class="profile-video-item"></div>').join('')}
-                            </div>
-                        `;
-                    },
-                },
-
-                // --- Event Handlers ---
-                setupEventListeners() {
-                    this.$('#bottom-nav').addEventListener('click', (e) => {
-                        const navItem = e.target.closest('.nav-item');
-                        if (navItem) {
-                            this.state.viewingProfileId = null;
-                            this.state.activeTab = navItem.dataset.tabId;
-                            this.render.currentView();
-                        }
-                    });
-                    this.$('#app').addEventListener('click', (e) => this.handleAppClick(e));
-                    this.$('#comments-modal').addEventListener('click', (e) => {
-                        if (e.target.classList.contains('modal-overlay') || e.target.closest('[data-action="close-comments"]')) {
-                            this.closeCommentsModal();
-                        }
-                    });
-                },
-
-                handleBackButtonClick() {
-                    if (this.state.activeTab === 'profile' && this.state.viewingProfileId) {
-                        this.state.activeTab = this.state.previousTab;
-                        this.state.viewingProfileId = null;
-                        this.render.currentView();
-                    }
-                },
-
-                async handleAppClick(e) {
-                    const target = e.target.closest('[data-action]');
-                    if (!target) return;
-                    
-                    const { action, userId, videoId } = target.dataset;
-
-                    switch(action) {
-                        case 'open-profile':
-                            this.state.previousTab = this.state.activeTab;
-                            this.state.viewingProfileId = userId;
-                            this.state.activeTab = 'profile';
-                            this.render.currentView();
-                            break;
-                        case 'comment':
-                            this.openCommentsModal(videoId);
-                            break;
-                        case 'send-comment':
-                            const input = this.$('#comment-input');
-                            if (input.value.trim()) {
-                                const { error } = await this.supabase.from('video_comments').insert({
-                                    video_id: input.dataset.videoId,
-                                    user_id: this.state.currentUser.id,
-                                    content: input.value.trim()
-                                });
-                                if (error) return tg.showAlert(error.message);
-                                input.value = '';
-                                this.openCommentsModal(input.dataset.videoId); // Refresh comments
-                            }
-                            break;
-                        case 'like':
-                            await this.toggleLike(videoId, target);
-                            break;
-                    }
-                },
-                
-                async toggleLike(videoId, button) {
-                    tg.HapticFeedback.impactOccurred('light');
-                    const isLiked = button.classList.contains('liked');
-                    const countSpan = button.querySelector('.count');
-                    const currentLikes = parseInt(countSpan.textContent);
-
-                    button.classList.toggle('liked');
-                    button.querySelector('svg').setAttribute('fill', !isLiked ? 'currentColor' : 'none');
-                    countSpan.textContent = isLiked ? currentLikes - 1 : currentLikes + 1;
-
-                    if (isLiked) {
-                        await this.supabase.from('video_likes').delete().match({ user_id: this.state.currentUser.id, video_id: videoId });
-                    } else {
-                        await this.supabase.from('video_likes').insert({ user_id: this.state.currentUser.id, video_id: videoId });
-                    }
-                },
-
-                // --- Modal Logic ---
-                async openCommentsModal(videoId) {
-                    const modal = this.$('#comments-modal');
-                    const list = this.$('#comments-list');
-                    this.$('#comment-input').dataset.videoId = videoId;
-                    list.innerHTML = `<div class="spinner"></div>`;
-                    modal.classList.add('active');
-                    tg.HapticFeedback.impactOccurred('light');
-
-                    const { data: comments, error } = await this.supabase.from('video_comments').select(`*, user:user_id(id, first_name, avatar_url)`).eq('video_id', videoId).order('created_at');
-                    if (error) { list.innerHTML = `<p>Не удалось загрузить комментарии.</p>`; return; }
-
-                    if (comments.length === 0) {
-                        list.innerHTML = `<p style="text-align:center; color: var(--hint-color); padding-top: 20px;">Комментариев пока нет.</p>`;
-                        return;
-                    }
-
-                    list.innerHTML = comments.map(comment => {
-                        const author = comment.user;
-                        const avatarStyle = author.avatar_url ? `background-image: url(${author.avatar_url})` : '';
-                        const avatarInitial = author.first_name ? author.first_name.charAt(0).toUpperCase() : '?';
-                        return `<div class="comment-item"><div class="comment-avatar" style="${avatarStyle}">${!author.avatar_url ? avatarInitial : ''}</div><div class="comment-content"><div class="author">${author.first_name}</div><div class="text">${comment.content}</div></div></div>`;
-                    }).join('');
-                },
-
-                closeCommentsModal() {
-                    this.$('#comments-modal').classList.remove('active');
-                },
-                
-                applyTheme(params) {
-                    const root = document.documentElement.style;
-                    for (const key in params) {
-                        root.setProperty(`--tg-theme-${key.replace(/_/g, '-')}`, params[key]);
-                    }
-                    const rgb = this.hexToRgb(params.link_color || '#62a8ea');
-                    if (rgb) root.setProperty('--tg-theme-link-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
-                },
-                hexToRgb(hex) {
-                    if (!hex) return null;
-                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-                },
-
-                // --- Video Observer Logic ---
-                setupVideoObserver() {
-                    this.videoObserver = new IntersectionObserver(
-                        (entries, observer) => {
-                            entries.forEach(entry => {
-                                const video = entry.target;
-                                if (entry.isIntersecting) {
-                                    video.play().catch(e => console.log("Autoplay was prevented:", e));
-                                } else {
-                                    video.pause();
-                                }
-                            });
-                        },
-                        { threshold: 0.5 }
-                    );
+                {
+                    id: 't2', name: 'Street Battle', creatorId: 'user1',
+                    startTime: new Date(Date.now() + 24 * 3600 * 1000).toISOString(), status: 'upcoming',
+                    etalonVideo: '360 flip', participants: [{ ...users['user1'], loh: '' }], currentTurnIndex: 0, needsJudging: false,
                 }
-            };
+            ],
 
-            // --- ЗАПУСК ПРИЛОЖЕНИЯ ---
-            App.init();
-        });
+            getUser: (id) => DBService.users[id],
+            getVideo: (id) => DBService.videos.find(v => v.id === id),
+            getTournament: (id) => DBService.tournaments.find(t => t.id === id),
+            getVideos: (page, limit) => {
+                const start = (page - 1) * limit;
+                return DBService.videos.slice(start, start + limit);
+            },
+            getTotalVideoPages: (limit) => Math.ceil(DBService.videos.length / limit),
+            addComment: (videoId, userId, text) => {
+                const video = DBService.getVideo(videoId);
+                if (!video) return false;
+                video.comments.push({ userId, text });
+                return true;
+            }
+        };
+
+        // --- Состояние приложения ---
+        const state = {
+            currentUser: DBService.getUser('user1'),
+            activePage: 'videoFeed',
+            history: [], // Для навигации
+            feedPage: 1,
+            feedItemsPerPage: 3,
+            isFeedLoading: false,
+        };
+        
+        // --- UI Утилиты: Модальные окна и Тосты ---
+        const UI = {
+            modal: {
+                overlay: $('#modal-overlay'),
+                title: $('#modal-title'),
+                content: $('#modal-content'),
+                buttons: $('#modal-buttons'),
+                hide: () => UI.modal.overlay.classList.remove('visible'),
+                show: ({ title, text, contentHtml, buttons }) => {
+                    UI.modal.title.textContent = title;
+                    UI.modal.content.innerHTML = text ? `<p class="modal-text">${text}</p>` : (contentHtml || '');
+                    UI.modal.buttons.innerHTML = buttons.map(btn => 
+                        `<button class="btn ${btn.class || ''}" id="${btn.id}">${btn.text}</button>`
+                    ).join('');
+                    buttons.forEach(btn => $(`#${btn.id}`).onclick = btn.onClick);
+                    UI.modal.overlay.classList.add('visible');
+                },
+                alert: (title, text = '') => UI.modal.show({
+                    title, text,
+                    buttons: [{ id: 'modal-ok', text: 'OK', onClick: UI.modal.hide }]
+                }),
+                confirm: (title, text = '') => new Promise(resolve => {
+                    UI.modal.show({
+                        title, text,
+                        buttons: [
+                            { id: 'modal-confirm-ok', text: 'OK', onClick: () => { UI.modal.hide(); resolve(true); } },
+                            { id: 'modal-confirm-cancel', text: 'Отмена', class: 'btn-secondary', onClick: () => { UI.modal.hide(); resolve(false); } }
+                        ]
+                    });
+                })
+            },
+            toast: {
+                container: $('#toast-container'),
+                show: (message, type = 'success') => {
+                    const icon = type === 'success' ? 'check-circle' : 'alert-circle';
+                    const toast = document.createElement('div');
+                    toast.className = `toast`;
+                    toast.innerHTML = `<i data-lucide="${icon}" class="${type}"></i><span>${message}</span>`;
+                    UI.toast.container.appendChild(toast);
+                    lucide.createIcons();
+                    
+                    setTimeout(() => {
+                        toast.classList.add('hiding');
+                        toast.addEventListener('animationend', () => toast.remove());
+                    }, 3000);
+                }
+            }
+        };
+
+        // --- КОМПОНЕНТЫ (Шаблоны) ---
+        const components = {
+            videoCard: (video) => {
+                if (!video) return '';
+                const author = DBService.getUser(video.userId);
+                if (!author) return '';
+
+                return `
+                <div class="card video-card">
+                    <div class="video-author" data-action="navigate" data-view="profile" data-user-id="${author.id}">
+                        <div class="author-avatar" style="background-color: ${stringToColor(author.id)};">${escapeHTML(author.avatar)}</div>
+                        <span class="author-name">${escapeHTML(author.name)}</span>
+                    </div>
+                    <div class="video-player"><span>🎬 ${escapeHTML(video.title)}</span></div>
+                    <div class="video-info">
+                        <h3 class="video-title">${escapeHTML(video.title)}</h3>
+                        <div class="video-footer">
+                            <div class="video-meta"><span><i data-lucide="eye" style="width:14px; vertical-align: -2px;"></i> ${video.views}</span></div>
+                            <div class="video-actions">
+                                <button class="action-btn ${video.isLiked ? 'liked' : ''}" data-action="like-video" data-video-id="${video.id}">
+                                    <i data-lucide="heart"></i>
+                                    <span class="count">${video.likes}</span>
+                                </button>
+                                <button class="action-btn" data-action="show-comments" data-video-id="${video.id}">
+                                    <i data-lucide="message-square"></i>
+                                    <span class="count">${video.comments.length}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            },
+            profilePage: (userId) => {
+                const user = DBService.getUser(userId);
+                if (!user) return components.emptyState('alert-circle', 'Профиль не найден', 'Пользователь с таким ID не существует.');
+                const userVideos = DBService.videos.filter(v => v.userId === userId);
+                return `
+                <div id="profile" class="page-content active">
+                    <div class="card profile-card">
+                        <div class="profile-avatar" style="background-color: ${stringToColor(user.id)};">${escapeHTML(user.avatar)}</div>
+                        <h2 class="profile-name">${escapeHTML(user.name)}</h2>
+                        <div class="profile-stats">
+                            <div class="stat-item"><div class="value">${userVideos.length}</div><div class="label">Видео</div></div>
+                            <div class="stat-item"><div class="value">${(user.followers / 1000).toFixed(1)}K</div><div class="label">Подписчики</div></div>
+                        </div>
+                    </div>
+                    <div class="profile-videos-grid">
+                        ${userVideos.length > 0 
+                            ? userVideos.map(v => `<div class="profile-video-item">🎬 ${escapeHTML(v.title)}</div>`).join('') 
+                            : '<p style="color: var(--hint-color); grid-column: 1 / -1; text-align: center; padding: 20px;">У пользователя еще нет видео.</p>'}
+                    </div>
+                </div>`;
+            },
+            tournamentCard: (t) => `
+                <div class="card tournament-card" data-action="navigate" data-view="tournament-detail" data-tournament-id="${t.id}">
+                    <div class="tournament-card-header">
+                        <span class="title">${escapeHTML(t.name)}</span>
+                        <span class="status status-${t.status}">${t.status}</span>
+                    </div>
+                    <div class="tournament-card-body">Участников: ${t.participants.length} | Старт: ${new Date(t.startTime).toLocaleDateString('ru-RU')}</div>
+                </div>
+            `,
+            participantItem: (p, t) => {
+                const isCreator = p.id === t.creatorId;
+                const isTurn = t.participants.findIndex(user => user.id === p.id) === t.currentTurnIndex && t.status === 'active';
+                return `
+                <div class="participant-item ${isTurn ? 'is-turn' : ''}">
+                    <div class="participant-avatar" style="background-color: ${stringToColor(p.id)};">${escapeHTML(p.avatar)}</div>
+                    <div class="participant-info">
+                        <div class="participant-name">${escapeHTML(p.name)}</div>
+                        <div class="participant-status">${isCreator ? 'Создатель' : 'Участник'}</div>
+                    </div>
+                    <div class="loh-status">${p.loh}</div>
+                </div>`;
+            },
+            emptyState: (icon, title, text) => `
+                <div class="empty-state">
+                    <i data-lucide="${icon}"></i>
+                    <h3 class="empty-state-title">${title}</h3>
+                    <p class="empty-state-text">${text}</p>
+                </div>
+            `,
+        };
+
+        // --- РЕНДЕР ФУНКЦИИ (Отрисовка представлений) ---
+        const render = {
+            page: (html) => {
+                $('#main-content').innerHTML = html;
+                lucide.createIcons();
+            },
+            videoFeed: (append = false) => {
+                const videosToRender = DBService.getVideos(state.feedPage, state.feedItemsPerPage);
+                const feedContainer = $('#videoFeed');
+                const loader = $('#feed-loader');
+                if (loader) loader.remove();
+
+                if (videosToRender.length === 0 && !append) {
+                    render.page(`<div id="videoFeed" class="page-content active">${components.emptyState('video-off', 'Лента пуста', 'Пока никто не выложил видео. Будьте первым!')}</div>`);
+                    return;
+                }
+
+                const content = videosToRender.map(components.videoCard).join('');
+                if (append) {
+                    feedContainer.insertAdjacentHTML('beforeend', content);
+                } else {
+                    render.page(`<div id="videoFeed" class="page-content active">${content}</div>`);
+                }
+                
+                const totalPages = DBService.getTotalVideoPages(state.feedItemsPerPage);
+                if (state.feedPage < totalPages) {
+                    $('#videoFeed').insertAdjacentHTML('beforeend', `<div id="feed-loader" class="spinner" style="margin: 20px auto;"></div>`);
+                }
+                lucide.createIcons();
+            },
+            tournamentsList: (searchTerm = '') => {
+                const filteredTournaments = DBService.tournaments.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+                const listHtml = filteredTournaments.length > 0
+                    ? filteredTournaments.map(components.tournamentCard).join('')
+                    : components.emptyState('swords', 'Турниры не найдены', 'Попробуйте изменить поисковый запрос.');
+
+                const content = `
+                    <div id="tournaments" class="page-content active">
+                        <div style="padding: 0 0 16px;"><button class="btn" data-action="navigate" data-view="create-tournament"><i data-lucide="plus"></i>Создать турнир</button></div>
+                        <div class="search-input-wrapper">
+                            <i data-lucide="search"></i>
+                            <input type="search" class="search-input" placeholder="Найти турнир..." value="${escapeHTML(searchTerm)}" data-action="search-tournaments">
+                        </div>
+                        <div id="tournaments-list">${listHtml}</div>
+                    </div>`;
+                render.page(content);
+            },
+            tournamentDetail: (tournamentId) => {
+                const t = DBService.getTournament(tournamentId);
+                if (!t) {
+                    render.page(components.emptyState('alert-circle', 'Турнир не найден', 'Возможно, он был удален или ссылка неверна.'));
+                    return;
+                }
+
+                const isCreator = t.creatorId === state.currentUser.id;
+                const turnUser = t.participants[t.currentTurnIndex];
+                const isMyTurn = turnUser && turnUser.id === state.currentUser.id;
+                const isParticipant = t.participants.some(p => p.id === state.currentUser.id);
+
+                let actionsHtml = '';
+                if (t.status === 'upcoming') {
+                     if (isParticipant) {
+                         actionsHtml = `<div class="tournament-actions"><button class="btn btn-danger" data-action="leave-tournament" data-tournament-id="${t.id}">Покинуть турнир</button></div>`;
+                     } else {
+                         actionsHtml = `<div class="tournament-actions"><button class="btn" data-action="join-tournament" data-tournament-id="${t.id}">Присоединиться</button></div>`;
+                     }
+                     if (isCreator) {
+                         const canStart = t.participants.length >= 2;
+                         actionsHtml += `<div class="tournament-actions" style="padding-top: 0;"><button class="btn btn-success" data-action="start-tournament" data-tournament-id="${t.id}" ${canStart ? '' : 'disabled'}>Начать турнир</button></div>`;
+                         if (!canStart) {
+                            actionsHtml += `<p class="tournament-info-text" style="padding-top: 0; font-size: 12px;">Нужно минимум 2 участника для старта</p>`;
+                         }
+                     }
+                } else if (t.status === 'active') {
+                    if (isCreator && t.needsJudging) {
+                        actionsHtml = `<div class="tournament-actions">
+                            <p style="text-align:center; color: var(--hint-color); margin-bottom: 8px;">Оцените ход от @${escapeHTML(turnUser?.name || '???')}</p>
+                            <button class="btn btn-success" data-action="judge" data-result="correct" data-tournament-id="${t.id}">Правильно</button>
+                            <button class="btn btn-danger" data-action="judge" data-result="incorrect" data-tournament-id="${t.id}">Неправильно</button>
+                        </div>`;
+                    } else if (isMyTurn) {
+                        actionsHtml = `<div class="tournament-actions"><button class="btn" data-action="submit-trick" data-tournament-id="${t.id}">Сделать ход</button></div>`;
+                    } else if (turnUser) {
+                        actionsHtml = `<p class="tournament-info-text">Ожидание хода от @${escapeHTML(turnUser.name)}</p>`;
+                    } else {
+                        actionsHtml = `<p class="tournament-info-text">Определение следующего хода...</p>`;
+                    }
+                } else if (t.status === 'finished') {
+                    const winnerName = t.participants[0]?.name || 'Неизвестен';
+                    actionsHtml = `<p class="tournament-info-text">Турнир завершен! 🏆<br>Победитель: @${escapeHTML(winnerName)}</p>`;
+                }
+
+                const pageHtml = `
+                <div id="tournaments" class="page-content active">
+                    <h1 class="page-header">${escapeHTML(t.name)}</h1>
+                    <div class="card">
+                        <div class="etalon-video-wrapper">
+                            <h3>Эталонный трюк</h3>
+                            <div class="etalon-player">🎬 ${escapeHTML(t.etalonVideo)}</div>
+                        </div>
+                        <div class="participants-list">
+                            <h3>Участники (${t.participants.length})</h3>
+                            ${t.participants.map(p => components.participantItem(p, t)).join('')}
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                </div>`;
+                render.page(pageHtml);
+            },
+            createTournamentForm: () => {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                const localDateTime = now.toISOString().slice(0, 16);
+
+                render.page(`
+                <div id="tournaments" class="page-content active">
+                    <h1 class="page-header">Новый турнир</h1>
+                    <div class="card form-container">
+                        <form id="create-tournament-form">
+                            <div class="form-group">
+                                <label for="tournament-name">Название турнира</label>
+                                <input type="text" id="tournament-name" required placeholder="Например, Game of S.K.A.T.E.">
+                            </div>
+                            <div class="form-group">
+                                <label for="tournament-start">Время начала</label>
+                                <input type="datetime-local" id="tournament-start" value="${localDateTime}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Эталонное видео</label>
+                                <button type="button" class="btn btn-secondary" data-action="select-etalon-video">Выбрать видео (демо)</button>
+                            </div>
+                            <button type="submit" class="btn">Создать турнир</button>
+                        </form>
+                    </div>
+                </div>`);
+            },
+            profile: (userId) => {
+                render.page(components.profilePage(userId));
+            },
+            nav: () => {
+                const navConfig = [
+                    { id: 'videoFeed', label: 'Лента', icon: 'home' },
+                    { id: 'tournaments', label: 'Турниры', icon: 'swords' },
+                    { id: 'profile', label: 'Профиль', icon: 'user' },
+                ];
+                $('#bottom-nav').innerHTML = navConfig.map(item => `
+                    <button class="nav-item ${state.activePage === item.id ? 'active' : ''}" data-action="set-page" data-page-id="${item.id}">
+                        <i data-lucide="${item.icon}"></i><span>${item.label}</span>
+                    </button>`).join('');
+                lucide.createIcons();
+            }
+        };
+
+        // --- ЛОГИКА ПРИЛОЖЕНИЯ (Actions) ---
+        const actions = {
+            navigate: (el) => {
+                const { view, ...params } = el.dataset;
+                const currentView = state.history[state.history.length - 1] || { view: state.activePage };
+                state.history.push(currentView);
+                
+                switch(view) {
+                    case 'profile': render.profile(params.userId); break;
+                    case 'tournament-detail': render.tournamentDetail(params.tournamentId); break;
+                    case 'create-tournament': render.createTournamentForm(); break;
+                }
+                updateUI();
+            },
+            setPage: (el) => {
+                state.activePage = el.dataset.pageId;
+                state.history = []; // Сбрасываем историю при смене таба
+                switch(state.activePage) {
+                    case 'videoFeed': state.feedPage = 1; render.videoFeed(); break;
+                    case 'tournaments': render.tournamentsList(); break;
+                    case 'profile': render.profile(state.currentUser.id); break;
+                }
+                updateUI();
+            },
+            goBack: () => {
+                if (state.history.length === 0) return;
+                const previousView = state.history.pop();
+                const { view, ...params } = previousView;
+                
+                switch(view) {
+                    case 'videoFeed': render.videoFeed(); break;
+                    case 'tournaments': render.tournamentsList(); break;
+                    case 'profile': render.profile(params.userId || state.currentUser.id); break;
+                    case 'tournament-detail': render.tournamentDetail(params.tournamentId); break;
+                    default: actions.setPage({ dataset: { pageId: state.activePage }});
+                }
+                updateUI();
+            },
+            likeVideo: (el) => {
+                const video = DBService.getVideo(el.dataset.videoId);
+                if (!video) return;
+
+                video.isLiked = !video.isLiked;
+                video.likes += video.isLiked ? 1 : -1;
+                
+                el.classList.toggle('liked', video.isLiked);
+                el.querySelector('.count').textContent = video.likes;
+                tg.HapticFeedback.impactOccurred('light');
+            },
+            createTournament: (form) => {
+                const name = form.elements['tournament-name'].value.trim();
+                const start = form.elements['tournament-start'].value;
+                if (!name || !start) {
+                    UI.toast.show('Заполните все поля', 'error');
+                    return;
+                }
+                
+                const newTournament = { 
+                    id: `t${Date.now()}`, name, creatorId: state.currentUser.id, 
+                    startTime: new Date(start).toISOString(), status: 'upcoming', 
+                    etalonVideo: 'New Trick', participants: [{...state.currentUser, loh: ''}], 
+                    currentTurnIndex: 0, needsJudging: false
+                };
+                DBService.tournaments.unshift(newTournament);
+                
+                tg.HapticFeedback.notificationOccurred('success');
+                UI.toast.show('Турнир успешно создан');
+                render.tournamentsList();
+                updateUI();
+            },
+            submitTrick: async (el) => {
+                const t = DBService.getTournament(el.dataset.tournamentId);
+                if (!t) return;
+                const ok = await UI.confirm.show('Подтверждение хода', 'Вы готовы загрузить 2 видео для своего хода? После этого создатель турнира должен будет их проверить.');
+                if (ok) {
+                    t.needsJudging = true;
+                    UI.toast.show('Ваш ход отправлен на проверку');
+                    render.tournamentDetail(t.id);
+                    updateUI();
+                }
+            },
+            judge: (el) => {
+                const { tournamentId, result } = el.dataset;
+                const t = DBService.getTournament(tournamentId);
+                if (!t || !t.needsJudging) return;
+
+                const turnUser = t.participants[t.currentTurnIndex];
+                if (!turnUser) return;
+
+                if (result === 'correct') {
+                    t.etalonVideo = `New trick by ${turnUser.name}`;
+                    tg.HapticFeedback.notificationOccurred('success');
+                    t.currentTurnIndex = (t.currentTurnIndex + 1) % t.participants.length;
+                } else {
+                    turnUser.loh += 'LOH'[turnUser.loh.length];
+                    tg.HapticFeedback.notificationOccurred('error');
+                    if (turnUser.loh === 'LOH') {
+                        t.participants.splice(t.currentTurnIndex, 1);
+                        if (t.currentTurnIndex >= t.participants.length) {
+                            t.currentTurnIndex = 0;
+                        }
+                    } else {
+                        t.currentTurnIndex = (t.currentTurnIndex + 1) % t.participants.length;
+                    }
+                }
+
+                t.needsJudging = false;
+
+                if (t.participants.length <= 1) {
+                    t.status = 'finished';
+                    const winnerName = t.participants[0]?.name || 'Неизвестен';
+                    UI.alert('Турнир завершен!', `Победитель: @${escapeHTML(winnerName)}`);
+                    render.tournamentsList();
+                } else {
+                    render.tournamentDetail(t.id);
+                }
+                updateUI();
+            },
+            showComments: (el) => {
+                 const video = DBService.getVideo(el.dataset.videoId);
+                 if (!video) return;
+                 
+                 let contentHtml;
+                 if (video.comments.length > 0) {
+                     contentHtml = video.comments.map(comment => {
+                         const author = DBService.getUser(comment.userId);
+                         if (!author) return '';
+                         return `
+                         <div class="comment-item">
+                             <div class="author-avatar" style="background-color: ${stringToColor(author.id)}; width: 36px; height: 36px; font-size: 16px;">${escapeHTML(author.avatar)}</div>
+                             <div class="comment-body">
+                                 <div class="comment-author">${escapeHTML(author.name)}</div>
+                                 <div class="comment-text">${escapeHTML(comment.text)}</div>
+                             </div>
+                         </div>
+                         `
+                     }).join('');
+                 } else {
+                     contentHtml = `<p style="color: var(--hint-color); padding: 20px 0;">Комментариев пока нет.</p>`;
+                 }
+
+                 UI.modal.show({
+                     title: `Комментарии (${video.comments.length})`,
+                     contentHtml,
+                     buttons: [{ id: 'modal-close', text: 'Закрыть', class: 'btn-secondary', onClick: UI.modal.hide }]
+                 });
+            },
+            joinTournament: (el) => {
+                const t = DBService.getTournament(el.dataset.tournamentId);
+                if (!t || t.status !== 'upcoming') {
+                    UI.toast.show('Невозможно присоединиться', 'error');
+                    return;
+                }
+                t.participants.push({...state.currentUser, loh: ''});
+                tg.HapticFeedback.notificationOccurred('success');
+                render.tournamentDetail(t.id);
+            },
+            leaveTournament: (el) => {
+                const t = DBService.getTournament(el.dataset.tournamentId);
+                if (!t || t.status !== 'upcoming') return;
+                t.participants = t.participants.filter(p => p.id !== state.currentUser.id);
+                tg.HapticFeedback.notificationOccurred('warning');
+                render.tournamentDetail(t.id);
+            },
+            startTournament: (el) => {
+                const t = DBService.getTournament(el.dataset.tournamentId);
+                if (!t || t.creatorId !== state.currentUser.id || t.status !== 'upcoming') return;
+                if (t.participants.length < 2) {
+                    UI.toast.show('Нужно минимум 2 участника', 'error');
+                    return;
+                }
+                t.status = 'active';
+                tg.HapticFeedback.notificationOccurred('success');
+                render.tournamentDetail(t.id);
+            },
+            searchTournaments: (el) => {
+                render.tournamentsList(el.value);
+            },
+            selectEtalonVideo: () => UI.alert('В разработке', 'Функция выбора видео будет добавлена в следующих версиях.'),
+            loadMoreVideos: () => {
+                if (state.isFeedLoading) return;
+                
+                const totalPages = DBService.getTotalVideoPages(state.feedItemsPerPage);
+                if (state.feedPage >= totalPages) {
+                    const loader = $('#feed-loader');
+                    if (loader) loader.remove();
+                    return;
+                }
+                
+                state.isFeedLoading = true;
+                
+                setTimeout(() => {
+                    state.feedPage += 1;
+                    render.videoFeed(true);
+                    state.isFeedLoading = false;
+                }, 500);
+            }
+        };
+
+        // --- Инициализация и обработчики событий ---
+        function applyTheme(params) {
+            const root = document.documentElement.style;
+            const mapping = {
+                bg_color: '--tg-theme-bg-color', text_color: '--tg-theme-text-color',
+                hint_color: '--tg-theme-hint-color', link_color: '--tg-theme-link-color',
+                button_color: '--tg-theme-button-color', button_text_color: '--tg-theme-button-text-color',
+                secondary_bg_color: '--tg-theme-secondary-bg-color',
+            };
+            for (const key in mapping) {
+                if (params[key]) root.style.setProperty(mapping[key], params[key]);
+            }
+            const rgb = hexToRgb(params.link_color || '#8774e1');
+            if (rgb) root.style.setProperty('--link-color-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        }
+
+        function hexToRgb(hex) {
+            if (!hex) return null;
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+        }
+        
+        function stringToColor(str) {
+            let hash = 0;
+            if (!str) return '#cccccc';
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            let color = '#';
+            for (let i = 0; i < 3; i++) {
+                let value = (hash >> (i * 8)) & 0xFF;
+                color += ('00' + value.toString(16)).substr(-2);
+            }
+            return color;
+        }
+
+        function updateUI() {
+            render.nav();
+            if (state.history.length > 0) {
+                tg.BackButton.show();
+            } else {
+                tg.BackButton.hide();
+            }
+        }
+        
+        function setupScrollListener() {
+            let timeout;
+            window.onscroll = () => {
+                if (state.activePage !== 'videoFeed' || state.isFeedLoading) return;
+                if (timeout) clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 150) {
+                         actions.loadMoreVideos();
+                    }
+                }, 100);
+            };
+        }
+
+        function main() {
+            tg.ready();
+            tg.expand();
+            
+            applyTheme(tg.themeParams);
+            tg.onEvent('themeChanged', () => applyTheme(tg.themeParams));
+            tg.BackButton.onClick(actions.goBack);
+
+            // Глобальный обработчик
+            $('#app').addEventListener('click', (e) => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+                const action = actions[target.dataset.action];
+                if (action) action(target);
+            });
+            $('#app').addEventListener('input', (e) => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+                const action = actions[target.dataset.action];
+                if (action) action(target);
+            });
+            $('#app').addEventListener('submit', (e) => {
+                if (e.target.id === 'create-tournament-form') {
+                    e.preventDefault();
+                    actions.createTournament(e.target);
+                }
+            });
+            modal.overlay.addEventListener('click', (e) => {
+                if (e.target === UI.modal.overlay) UI.modal.hide();
+            });
+
+            // Первоначальная отрисовка
+            actions.setPage({ dataset: { pageId: state.activePage }});
+            setupScrollListener();
+
+            // Показываем приложение
+            $('#loader').style.opacity = '0';
+            $('#loader').style.visibility = 'hidden';
+            $('#app').style.display = 'flex';
+        }
+
+        main();
+    });
     </script>
 </body>
 </html>
